@@ -1,0 +1,2153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>천타버스 랜덤 달리기</title>
+    <link rel="icon" href="https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CRD.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        .title-font { font-family: 'Nanum Gothic', sans-serif; font-weight: 800; }
+        .member-card { transition: all 0.3s ease; }
+        .member-card.selected { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        .member-card:hover { transform: scale(1.02); }
+        #gameCanvas { width: 100%; height: 100%; display: block; }
+        .speed-lines {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 50px,
+                rgba(255,255,255,0.1) 50px,
+                rgba(255,255,255,0.1) 51px
+            );
+            animation: speedMove 0.05s linear infinite;
+        }
+        @keyframes speedMove {
+            from { transform: translateX(0); }
+            to { transform: translateX(-51px); }
+        }
+        .ranking-item { transition: all 0.3s ease; }
+        .ranking-item-confirmed {
+            animation: confirmPulse 1s ease infinite, confirmGlow 0.5s ease-out;
+            background: linear-gradient(135deg, rgba(34, 197, 94,0.3) 0%, rgba(34, 197, 94,0.1) 100%);
+            border: 2px solid #22c55e;
+            transform: scale(1.12);
+        }
+        @keyframes confirmPulse {
+            0%, 100% { transform: scale(1.12); }
+            50% { transform: scale(1.18); }
+        }
+        @keyframes confirmGlow {
+            0% { box-shadow: 0 0 0 rgba(34,197,94,0); }
+            50% { box-shadow: 0 0 30px rgba(34,197,94,0.8), 0 0 60px rgba(34,197,94,0.4); }
+            100% { box-shadow: 0 0 20px rgba(34,197,94,0.6), 0 0 40px rgba(34,197,94,0.3); }
+        }
+        .crown-icon {
+            display: inline-block;
+            filter: drop-shadow(0 0 8px #22c55e);
+        }
+        .ranking-item-confirmed .crown-icon {
+            animation: crownBounce 0.6s ease infinite;
+        }
+        @keyframes crownBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] { -moz-appearance: textfield; }
+        #eventAlert div, #ultimateAlert div, #countdownAlert div, #gapAlert div {
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 16px;
+            padding: 20px 32px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+        }
+        #ultimateAlert div {
+            text-shadow: none !important;
+        }
+        #eventAlert {
+            background: transparent;
+        }
+        #eventAlert div {
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 12px;
+            padding: 12px 24px;
+            min-height: 48px;
+            font-size: 1.5rem;
+        }
+        .ranking-container {
+            position: absolute;
+            top: 50%;
+            left: 16px;
+            transform: translateY(-50%) scale(1.3);
+            transform-origin: left center;
+        }
+        #ultimateAlert {
+            top: 8%;
+        }
+        #countdownAlert {
+            top: 8%;
+        }
+        #eventAlert {
+            top: 8%;
+            left: 50%;
+            transform: translate(-50%, 0);
+        }
+        #gapAlert {
+            top: 8%;
+            left: 50%;
+            transform: translate(-50%, 0);
+        }
+        #memberGrid .member-card img {
+            object-position: bottom;
+        }
+        .countdown-text {
+            animation: countdownPulse 0.5s ease-out;
+        }
+        @keyframes countdownPulse {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .sprint-effect {
+            animation: sprintGlow 0.3s ease-in-out infinite alternate;
+        }
+        @keyframes sprintGlow {
+            0% { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+            100% { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor, 0 0 60px currentColor; }
+        }
+        .sprint-screen-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 60%);
+        }
+        .sprint-speed-lines {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 4;
+            overflow: hidden;
+        }
+        .sprint-speed-lines::before,
+        .sprint-speed-lines::after {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 40px,
+                rgba(255,255,255,0.15) 40px,
+                rgba(255,255,255,0.15) 42px
+            );
+            animation: sprintLines 0.015s linear infinite;
+        }
+        .sprint-speed-lines::after {
+            background: repeating-linear-gradient(
+                85deg,
+                transparent,
+                transparent 60px,
+                rgba(255,255,255,0.08) 60px,
+                rgba(255,255,255,0.08) 63px
+            );
+            animation-duration: 0.02s;
+        }
+        @keyframes sprintLines {
+            from { transform: translateX(0); }
+            to { transform: translateX(-42px); }
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .sprint-wind-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 6;
+            overflow: hidden;
+        }
+        .wind-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+            animation: windMove 0.3s linear infinite;
+        }
+        @keyframes windMove {
+            0% { transform: translateX(100vw); }
+            100% { transform: translateX(-100vw); }
+        }
+        .toggle-switch {
+            position: relative;
+            width: 56px;
+            height: 28px;
+            background: #4b5563;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .toggle-switch.active {
+            background: #3b82f6;
+        }
+        .toggle-switch .toggle-knob {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .toggle-switch.active .toggle-knob {
+            transform: translateX(28px);
+        }
+        .divider-line {
+            width: 1px;
+            height: 48px;
+            background: #4b5563;
+        }
+        .closeup-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            background: linear-gradient(to bottom, 
+                rgba(0,0,0,0.3) 0%, 
+                transparent 15%, 
+                transparent 85%, 
+                rgba(0,0,0,0.3) 100%);
+        }
+        .closeup-text {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fbbf24;
+            animation: pulseText 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes pulseText {
+            0% { transform: translateX(-50%) scale(1); }
+            100% { transform: translateX(-50%) scale(1.05); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div id="root"></div>
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="text-center">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <p class="text-white text-xl">이미지 로딩 중... <span id="loadingProgress">0/12</span></p>
+        </div>
+    </div>
+
+    <div id="menuScreen" class="min-h-screen p-4">
+        <div class="max-w-6xl mx-auto">
+            <h1 class="title-font text-5xl py-6 text-white text-center mb-6">
+                천타버스 랜덤 달리기
+            </h1>
+            <div class="flex justify-center mb-6">
+                <div class="bg-gray-800 rounded-2xl p-6 flex items-center gap-6">
+                    <div class="flex items-center gap-4">
+                        <span class="text-xl">상위</span>
+                        <div id="passCountWrapper" class="relative">
+                            <input type="number" id="passCount" value="3" min="1" max="12"
+                                class="w-24 h-16 text-3xl text-center bg-gray-700 rounded-lg border-2 border-blue-500 focus:outline-none focus:border-blue-400">
+                            <div class="text-xs text-gray-400 text-center mt-1">마우스 휠로 조절</div>
+                        </div>
+                        <span class="text-xl">명 합격</span>
+                    </div>
+
+                    <div class="divider-line"></div>
+
+                    <div class="flex items-center gap-3">
+                        <span class="text-base whitespace-nowrap">막판 스퍼트</span>
+                        <div id="sprintToggle" class="toggle-switch active" onclick="toggleSprint()">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>
+
+                    <div class="divider-line"></div>
+
+                    <button id="startBtn" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-xl px-8 py-4 rounded-2xl transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 w-52" disabled>
+                        이미지 로딩 중...
+                    </button>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-2xl p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">참가 멤버 선택</h2>
+                    <button id="selectAllBtn" class="bg-white hover:bg-gray-200 text-black font-bold px-6 py-2 rounded-lg transition">
+                        전체 선택
+                    </button>
+                </div>
+                <div id="memberGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
+            </div>
+            <div class="text-center">
+                <p id="selectedCount" class="text-gray-400">선택된 멤버: 0명</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="gameScreen" class="hidden fixed inset-0">
+        <div id="canvasContainer" class="w-full h-full">
+            <canvas id="gameCanvas"></canvas>
+            <div id="speedLines" class="speed-lines hidden"></div>
+            <div id="sprintScreenEffect" class="sprint-screen-effect hidden"></div>
+            <div id="sprintSpeedLines" class="sprint-speed-lines hidden"></div>
+            <div id="sprintWindEffect" class="sprint-wind-effect hidden"></div>
+            <div id="closeupOverlay" class="closeup-overlay hidden">
+                <div class="closeup-text">🔥 막판 접전! 🔥</div>
+            </div>
+        </div>
+        <div class="ranking-container" id="rankingContainer" style="opacity: 0; transition: opacity 0.5s;">
+            <div id="rankingPanel" class="bg-black/75 rounded-xl p-3 w-max pointer-events-auto backdrop-blur-sm">
+                <h3 class="text-base font-bold text-green-400 mb-2 text-center">실시간 순위</h3>
+                <div id="rankingList" class="space-y-1"></div>
+            </div>
+        </div>
+        <div id="countdownAlert" class="absolute left-1/2 transform -translate-x-1/2 hidden z-50">
+            <div class="title-font text-6xl text-center text-white countdown-text"></div>
+        </div>
+        <div id="ultimateAlert" class="absolute left-1/2 transform -translate-x-1/2 hidden z-50">
+            <div class="title-font text-5xl text-center text-white"></div>
+        </div>
+        <div id="eventAlert" class="absolute hidden z-40">
+            <div class="title-font text-3xl text-center text-white flex items-center gap-3"></div>
+        </div>
+        <div id="gapAlert" class="absolute hidden z-50">
+            <div class="title-font text-3xl text-center text-white flex flex-col items-center gap-2"></div>
+        </div>
+    </div>
+
+    <div id="resultScreen" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4">
+        <!-- resultContainer ID 추가 및 고정 너비 클래스 제거 -->
+        <div id="resultContainer" class="bg-gray-800 rounded-3xl p-8 w-full">
+            <h2 class="title-font text-4xl text-center text-white mb-6">경기 결과</h2>
+            <div id="resultList" class="grid gap-4 mb-6"></div>
+            <div class="text-center">
+                <button id="replayBtn" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-xl px-8 py-3 rounded-xl transition">
+                    다시하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const members = [
+            { id: 1, name: '천양', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/01.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/01.png', color: '#43EAF6' },
+            { id: 2, name: '마다옴', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/02.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/02.png', color: '#FFF5C3' },
+            { id: 3, name: '나나문', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/03.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/03.png', color: '#F4F6FF' },
+            { id: 4, name: '임하밍', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/04.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/04.png', color: '#F8DBFF' },
+            { id: 5, name: '문모모', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/05.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/05.png', color: '#A868FB' },
+            { id: 6, name: '한아밍', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/06.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/06.png', color: '#FEC0C2' },
+            { id: 7, name: '카푸', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/07.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/07.png', color: '#FFCFB7' },
+            { id: 8, name: '캬앙', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/08.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/08.png', color: '#FF5A4D' },
+            { id: 9, name: '김웰로', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/09.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/09.png', color: '#BFEF90' },
+            { id: 10, name: '모카', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/10.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/10.png', color: '#5E8EFF' },
+            { id: 11, name: '달타', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/11.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/11.png', color: '#FFC462' },
+            { id: 12, name: '파니', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/12.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/12.png', color: '#9FC5E8' }
+        ];
+
+        let selectedMembers = new Set();
+        let passCount = 3;
+        let imagesLoaded = 0;
+        let imagesToLoad = members.length;
+        let allImagesLoaded = false;
+        let sprintEnabled = true;
+        
+        const preloadedTextures = {};
+
+        function toggleSprint() {
+            sprintEnabled = !sprintEnabled;
+            const toggle = document.getElementById('sprintToggle');
+            if (sprintEnabled) {
+                toggle.classList.add('active');
+            } else {
+                toggle.classList.remove('active');
+            }
+        }
+
+        function preloadImages() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingProgress = document.getElementById('loadingProgress');
+            
+            loadingOverlay.classList.remove('hidden');
+            
+            let loadedCount = 0;
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.setCrossOrigin('anonymous');
+            
+            members.forEach(member => {
+                textureLoader.load(
+                    member.img,
+                    (texture) => {
+                        texture.magFilter = THREE.LinearFilter;
+                        texture.minFilter = THREE.LinearFilter;
+                        preloadedTextures[member.id] = texture;
+                        
+                        loadedCount++;
+                        imagesLoaded = loadedCount;
+                        loadingProgress.textContent = `${loadedCount}/${imagesToLoad}`;
+                        
+                        if (loadedCount === imagesToLoad) {
+                            allImagesLoaded = true;
+                            loadingOverlay.classList.add('hidden');
+                            updateStartButton();
+                        }
+                    },
+                    undefined,
+                    () => {
+                        loadedCount++;
+                        imagesLoaded = loadedCount;
+                        loadingProgress.textContent = `${loadedCount}/${imagesToLoad}`;
+                        
+                        if (loadedCount === imagesToLoad) {
+                            allImagesLoaded = true;
+                            loadingOverlay.classList.add('hidden');
+                            updateStartButton();
+                        }
+                    }
+                );
+            });
+        }
+
+        function updateStartButton() {
+            const startBtn = document.getElementById('startBtn');
+            if (!allImagesLoaded) {
+                startBtn.disabled = true;
+                startBtn.textContent = '이미지 로딩 중...';
+            } else if (selectedMembers.size < 2) {
+                startBtn.disabled = true;
+                startBtn.textContent = '2명 이상 선택';
+            } else {
+                startBtn.disabled = false;
+                startBtn.textContent = '경기 시작!';
+            }
+        }
+
+        function createMemberGrid() {
+            const grid = document.getElementById('memberGrid');
+            grid.innerHTML = '';
+            members.forEach(member => {
+                const card = document.createElement('div');
+                card.className = 'member-card bg-gray-700 rounded-xl p-3 cursor-pointer border-2 border-transparent';
+                card.dataset.id = member.id;
+                card.innerHTML = `
+                    <div class="aspect-square rounded-lg overflow-hidden mb-2 relative">
+                        <img src="${member.imgPng}" alt="${member.name}" class="w-full h-full object-cover">
+                        <div class="absolute bottom-0 left-0 w-full h-1" style="background-color: ${member.color}"></div>
+                    </div>
+                    <div class="text-center font-bold text-sm" style="color: ${member.color}">${member.name}</div>
+                `;
+                card.addEventListener('click', () => toggleMember(member.id, card));
+                grid.appendChild(card);
+            });
+        }
+
+        function toggleMember(id, card) {
+            if (selectedMembers.has(id)) {
+                selectedMembers.delete(id);
+                card.classList.remove('selected', 'border-white');
+            } else {
+                selectedMembers.add(id);
+                card.classList.add('selected', 'border-white');
+            }
+            updateSelectedCount();
+            updateStartButton();
+        }
+
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = `선택된 멤버: ${selectedMembers.size}명`;
+            const maxPass = Math.max(1, selectedMembers.size - 1);
+            document.getElementById('passCount').max = maxPass;
+            if (passCount > maxPass) {
+                passCount = maxPass;
+                document.getElementById('passCount').value = passCount;
+            }
+        }
+
+        document.getElementById('selectAllBtn').addEventListener('click', () => {
+            const cards = document.querySelectorAll('.member-card');
+            if (selectedMembers.size === members.length) {
+                selectedMembers.clear();
+                cards.forEach(card => card.classList.remove('selected', 'border-white'));
+            } else {
+                members.forEach(m => selectedMembers.add(m.id));
+                cards.forEach(card => card.classList.add('selected', 'border-white'));
+            }
+            updateSelectedCount();
+            updateStartButton();
+        });
+
+        const passCountInput = document.getElementById('passCount');
+        const passCountWrapper = document.getElementById('passCountWrapper');
+
+        passCountWrapper.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const max = parseInt(passCountInput.max) || 12;
+            if (e.deltaY < 0 && passCount < max) {
+                passCount++;
+            } else if (e.deltaY > 0 && passCount > 1) {
+                passCount--;
+            }
+            passCountInput.value = passCount;
+        });
+
+        passCountInput.addEventListener('change', () => {
+            passCount = Math.max(1, Math.min(parseInt(passCountInput.value) || 1, parseInt(passCountInput.max) || 12));
+            passCountInput.value = passCount;
+        });
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            if (!allImagesLoaded) return;
+            if (selectedMembers.size < 2) return;
+            if (passCount >= selectedMembers.size) {
+                alert('합격 인원은 참가자 수보다 적어야 합니다!');
+                return;
+            }
+            document.getElementById('menuScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            startGame();
+        });
+
+        document.getElementById('replayBtn').addEventListener('click', () => {
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('menuScreen').classList.remove('hidden');
+        });
+
+        let scene, camera, renderer;
+        let runners = [];
+        let obstacles = [];
+        let trackLength = 500;
+        let finishLine;
+        let gameRunning = false;
+        let raceEnded = false;
+        let gameTime = 0;
+        let slowMotion = false;
+        let slowMotionFactor = 1;
+        let currentCameraMode = 'overview';
+        let prevCameraMode = 'overview';
+        let cameraChangeTimer = 0;
+        let finishedRunners = [];
+        let ultimateUsed = false;
+        let ultimateActive = false;
+        let confirmedRanks = new Set();
+        let startingSequence = false;
+        let raceStarted = false;
+        let sprintPhaseStarted = false;
+        let sprintRunners = [];
+        let startTime = 0;
+        let previousRanks = {};
+        let cameraTargetY = 0;
+        let closeupMode = false;
+        let gapMode = false;
+        let gapRunnerA = null;
+        let gapRunnerB = null;
+        let gameEndScheduled = false;
+
+        let sharedGeometries = {};
+        let sharedMaterials = {};
+
+        function initSharedResources() {
+            sharedGeometries = {
+                hurdleBar: new THREE.BoxGeometry(3.5, 0.2, 0.2),
+                hurdlePole: new THREE.CylinderGeometry(0.06, 0.06, 0.7, 8),
+                hurdleReflector: new THREE.BoxGeometry(0.3, 0.15, 0.25),
+                stone: new THREE.DodecahedronGeometry(1, 0),
+                boostArrow: null,
+                boostBase: new THREE.PlaneGeometry(2, 3),
+                boostRing: new THREE.RingGeometry(1.2, 1.5, 16),
+                trailPlane: new THREE.PlaneGeometry(0.15, 1),
+                particleGeom: null
+            };
+            
+            const arrowShape = new THREE.Shape();
+            arrowShape.moveTo(0, 1.2);
+            arrowShape.lineTo(0.8, 0);
+            arrowShape.lineTo(0.4, 0);
+            arrowShape.lineTo(0.4, -1.2);
+            arrowShape.lineTo(-0.4, -1.2);
+            arrowShape.lineTo(-0.4, 0);
+            arrowShape.lineTo(-0.8, 0);
+            arrowShape.lineTo(0, 1.2);
+            sharedGeometries.boostArrow = new THREE.ShapeGeometry(arrowShape);
+
+            sharedMaterials = {
+                hurdleBar: new THREE.MeshStandardMaterial({ color: 0xff5500, metalness: 0.5, roughness: 0.3, emissive: 0xff2200, emissiveIntensity: 0.2 }),
+                hurdlePole: new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 }),
+                hurdleReflector: new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 0.5 }),
+                boostArrow: new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x006600, emissiveIntensity: 0.4 }),
+                boostBase: new THREE.MeshStandardMaterial({ color: 0x004400, transparent: true, opacity: 0.5 }),
+                boostRing: new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
+                gravelColors: [0x888888, 0x777777, 0x999999, 0x666666].map(c => 
+                    new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, metalness: 0.2 })
+                )
+            };
+        }
+
+        function startGame() {
+            finishedRunners = [];
+            ultimateUsed = false;
+            ultimateActive = false;
+            confirmedRanks = new Set();
+            gameTime = 0;
+            slowMotion = false;
+            slowMotionFactor = 1;
+            currentCameraMode = 'overview';
+            prevCameraMode = 'overview';
+            cameraChangeTimer = 0;
+            startingSequence = true;
+            raceStarted = false;
+            raceEnded = false;
+            sprintPhaseStarted = false;
+            sprintRunners = [];
+            startTime = 0;
+            previousRanks = {};
+            cameraTargetY = 0;
+            closeupMode = false;
+            gapMode = false;
+            gapRunnerA = null;
+            gapRunnerB = null;
+            gameEndScheduled = false;
+
+            document.getElementById('rankingContainer').style.opacity = '0';
+            document.getElementById('ultimateAlert').classList.add('hidden');
+            document.getElementById('eventAlert').classList.add('hidden');
+            document.getElementById('countdownAlert').classList.add('hidden');
+            document.getElementById('gapAlert').classList.add('hidden');
+            document.getElementById('sprintScreenEffect').classList.add('hidden');
+            document.getElementById('sprintSpeedLines').classList.add('hidden');
+            document.getElementById('sprintWindEffect').classList.add('hidden');
+            document.getElementById('closeupOverlay').classList.add('hidden');
+
+            if (scene) {
+                scene.traverse((object) => {
+                    if (object.geometry) object.geometry.dispose();
+                    if (object.material) {
+                        if (Array.isArray(object.material)) {
+                            object.material.forEach(m => m.dispose());
+                        } else {
+                            object.material.dispose();
+                        }
+                    }
+                });
+                while (scene.children.length > 0) {
+                    scene.remove(scene.children[0]);
+                }
+            }
+            if (renderer) {
+                renderer.dispose();
+            }
+
+            runners = [];
+            obstacles = [];
+
+            initSharedResources();
+            initThreeJS();
+            createTrack();
+            createRunners();
+            createObstacles();
+            gameRunning = true;
+            lastTime = 0;
+            
+            runStartingSequence();
+        }
+
+        function runStartingSequence() {
+            const selectedArray = Array.from(selectedMembers);
+            const laneCount = selectedArray.length;
+            const laneWidth = 6;
+            const trackWidth = laneCount * laneWidth;
+
+            const startX = -trackWidth / 2 + laneWidth / 2;
+            const startPos = new THREE.Vector3(startX - 6, 6, 8);
+            camera.position.copy(startPos);
+            camera.lookAt(startX, 2, 0);
+            
+            camera.lookAtVector = new THREE.Vector3(startX, 2, 0);
+            
+            renderer.render(scene, camera);
+
+            setTimeout(() => {
+                const endX = -trackWidth / 2 + laneWidth / 2 + (laneCount - 1) * laneWidth;
+                const endPos = new THREE.Vector3(endX - 6, 6, 8);
+                const endLookAt = new THREE.Vector3(endX, 2, 0);
+                
+                const startLookAt = camera.lookAtVector.clone();
+                const duration = 5000;
+                const animStartTime = performance.now();
+
+                function animateSweep() {
+                    const elapsed = performance.now() - animStartTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                    
+                    camera.position.lerpVectors(startPos, endPos, ease);
+                    
+                    const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, endLookAt, ease);
+                    camera.lookAtVector = currentLookAt;
+                    camera.lookAt(currentLookAt);
+                    
+                    renderer.render(scene, camera);
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animateSweep);
+                    } else {
+                        setTimeout(() => {
+                            showFullStartingLine(trackWidth, laneWidth, laneCount);
+                        }, 300);
+                    }
+                }
+                
+                animateSweep();
+            }, 300);
+        }
+
+        function showFullStartingLine(trackWidth, laneWidth, laneCount) {
+            const startPos = camera.position.clone();
+            const startLookAt = camera.lookAtVector.clone();
+            
+            const endPos = new THREE.Vector3(0, 18, -40);
+            const endLookAt = new THREE.Vector3(0, 2, 0);
+            
+            const duration = 3333;
+            const animStartTime = performance.now();
+            
+            function animateToFullView() {
+                const elapsed = performance.now() - animStartTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                
+                camera.position.lerpVectors(startPos, endPos, ease);
+                
+                const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, endLookAt, ease);
+                camera.lookAtVector = currentLookAt;
+                camera.lookAt(currentLookAt);
+                
+                renderer.render(scene, camera);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateToFullView);
+                } else {
+                    startCountdown();
+                }
+            }
+            
+            animateToFullView();
+        }
+
+        function startCountdown() {
+            const countdownTexts = ['제자리에', '준비', '출발!'];
+            let countdownIndex = 0;
+            const countdownAlert = document.getElementById('countdownAlert');
+            const countdownDiv = countdownAlert.querySelector('div');
+            
+            function showNextCountdown() {
+                if (countdownIndex < countdownTexts.length) {
+                    countdownAlert.classList.remove('hidden');
+                    
+                    countdownDiv.classList.remove('countdown-text');
+                    void countdownDiv.offsetWidth;
+                    countdownDiv.classList.add('countdown-text');
+                    
+                    if (countdownIndex === 2) {
+                        countdownDiv.textContent = countdownTexts[countdownIndex];
+                        countdownDiv.style.color = '#22c55e';
+                        countdownDiv.style.textShadow = '0 0 20px rgba(34, 197, 94, 0.8)';
+                    } else {
+                        countdownDiv.textContent = countdownTexts[countdownIndex];
+                        countdownDiv.style.color = '#ffffff';
+                        countdownDiv.style.textShadow = 'none';
+                    }
+                    
+                    countdownIndex++;
+                    
+                    const delay = countdownIndex === 3 ? 800 : 1200;
+                    setTimeout(showNextCountdown, delay);
+                } else {
+                    countdownAlert.classList.add('hidden');
+                    startingSequence = false;
+                    raceStarted = true;
+                    startTime = 0;
+                    
+                    document.getElementById('rankingContainer').style.opacity = '1';
+                    
+                    lastTime = 0;
+                    animate();
+                }
+            }
+            
+            showNextCountdown();
+        }
+
+        function initThreeJS() {
+            const container = document.getElementById('canvasContainer');
+            const canvas = document.getElementById('gameCanvas');
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            scene.fog = new THREE.Fog(0x1a1a2e, 50, 300);
+
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1500);
+            camera.position.set(0, 30, -20);
+            camera.lookAt(0, 0, 50);
+            camera.lookAtVector = new THREE.Vector3(0, 0, 50);
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.sortObjects = true;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            directionalLight.shadow.camera.left = -100;
+            directionalLight.shadow.camera.right = 100;
+            directionalLight.shadow.camera.top = 100;
+            directionalLight.shadow.camera.bottom = -100;
+            scene.add(directionalLight);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function createTrack() {
+            const selectedArray = Array.from(selectedMembers);
+            const laneCount = selectedArray.length;
+            const laneWidth = 6;
+            const trackWidth = laneCount * laneWidth;
+            const totalTrackLength = trackLength + 200;
+
+            const trackGeometry = new THREE.PlaneGeometry(trackWidth + 10, totalTrackLength);
+            const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x1f3b4d });
+            const track = new THREE.Mesh(trackGeometry, trackMaterial);
+            track.rotation.x = -Math.PI / 2;
+            track.position.set(0, -0.1, totalTrackLength / 2 - 100);
+            track.receiveShadow = true;
+            scene.add(track);
+
+            const innerBorderGeom = new THREE.PlaneGeometry(0.5, totalTrackLength);
+            const innerBorderMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const innerBorder = new THREE.Mesh(innerBorderGeom, innerBorderMat);
+            innerBorder.rotation.x = -Math.PI / 2;
+            innerBorder.position.set(-trackWidth / 2 - 2.5, 0.02, totalTrackLength / 2 - 100);
+            scene.add(innerBorder);
+
+            const lineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
+            for (let i = 0; i <= laneCount; i++) {
+                const lineGeometry = new THREE.PlaneGeometry(0.12, totalTrackLength);
+                const line = new THREE.Mesh(lineGeometry, lineMaterial);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(-trackWidth / 2 + i * laneWidth, 0.01, totalTrackLength / 2 - 100);
+                scene.add(line);
+            }
+
+            const finishGeometry = new THREE.PlaneGeometry(trackWidth + 10, 4);
+            const finishMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
+            finishLine = new THREE.Mesh(finishGeometry, finishMaterial);
+            finishLine.rotation.x = -Math.PI / 2;
+            finishLine.position.set(0, 0.02, trackLength);
+            scene.add(finishLine);
+
+            const startGeometry = new THREE.PlaneGeometry(trackWidth + 10, 3);
+            const startMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
+            const startLine = new THREE.Mesh(startGeometry, startMaterial);
+            startLine.rotation.x = -Math.PI / 2;
+            startLine.position.set(0, 0.02, 0);
+            scene.add(startLine);
+        }
+
+        function createRunners() {
+            runners = [];
+            const selectedArray = Array.from(selectedMembers);
+            const shuffledMembers = selectedArray.map(id => members.find(m => m.id === id));
+            for (let i = shuffledMembers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledMembers[i], shuffledMembers[j]] = [shuffledMembers[j], shuffledMembers[i]];
+            }
+            
+            const laneCount = selectedArray.length;
+            const laneWidth = 6;
+            const trackWidth = laneCount * laneWidth;
+
+            shuffledMembers.forEach((member, index) => {
+                const laneX = -trackWidth / 2 + laneWidth / 2 + index * laneWidth;
+
+                const bodyGroup = new THREE.Group();
+                const runnerColor = new THREE.Color(member.color);
+
+                const torsoGeom = new THREE.BoxGeometry(2.2, 2.2, 1.4);
+
+                const preloadedTex = preloadedTextures[member.id];
+
+                const sideMat = new THREE.MeshStandardMaterial({ color: runnerColor });
+                const topMat = new THREE.MeshStandardMaterial({ color: runnerColor });
+                const bottomMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+                const frontMat = new THREE.MeshStandardMaterial({ 
+                    color: 0xffffff,
+                    map: preloadedTex || null
+                });
+                const backMat = new THREE.MeshStandardMaterial({ 
+                    color: 0xffffff,
+                    map: preloadedTex || null
+                });
+
+                const torsoMaterials = [
+                    sideMat,
+                    sideMat.clone(),
+                    topMat,
+                    bottomMat,
+                    frontMat,
+                    backMat,
+                ];
+
+                const torso = new THREE.Mesh(torsoGeom, torsoMaterials);
+                torso.position.y = 1.8;
+                torso.castShadow = true;
+                bodyGroup.add(torso);
+
+                const legGeom = new THREE.BoxGeometry(0.4, 0.9, 0.4);
+                const legMat = new THREE.MeshStandardMaterial({ color: runnerColor });
+
+                const leftLegGroup = new THREE.Group();
+                const leftLeg = new THREE.Mesh(legGeom, legMat);
+                leftLeg.position.y = -0.45;
+                leftLeg.castShadow = true;
+                leftLegGroup.add(leftLeg);
+                leftLegGroup.position.set(-0.5, 0.9, 0);
+                bodyGroup.add(leftLegGroup);
+
+                const rightLegGroup = new THREE.Group();
+                const rightLeg = new THREE.Mesh(legGeom, legMat.clone());
+                rightLeg.position.y = -0.45;
+                rightLeg.castShadow = true;
+                rightLegGroup.add(rightLeg);
+                rightLegGroup.position.set(0.5, 0.9, 0);
+                bodyGroup.add(rightLegGroup);
+
+                const armGeom = new THREE.BoxGeometry(0.25, 0.8, 0.25);
+                const armMat = new THREE.MeshStandardMaterial({ color: runnerColor });
+
+                const leftArmGroup = new THREE.Group();
+                const leftArm = new THREE.Mesh(armGeom, armMat);
+                leftArm.position.y = -0.4;
+                leftArm.castShadow = true;
+                leftArmGroup.add(leftArm);
+                leftArmGroup.position.set(-1.3, 2.1, 0);
+                bodyGroup.add(leftArmGroup);
+
+                const rightArmGroup = new THREE.Group();
+                const rightArm = new THREE.Mesh(armGeom, armMat.clone());
+                rightArm.position.y = -0.4;
+                rightArm.castShadow = true;
+                rightArmGroup.add(rightArm);
+                rightArmGroup.position.set(1.3, 2.1, 0);
+                bodyGroup.add(rightArmGroup);
+
+                const nameCanvas = document.createElement('canvas');
+                const nameLength = member.name.length;
+                let fontSize, planeWidth, planeHeight;
+                
+                if (nameLength <= 2) {
+                    fontSize = 220;
+                    planeWidth = 20;
+                    planeHeight = 5.5;
+                } else if (nameLength === 3) {
+                    fontSize = 220;
+                    planeWidth = 20;
+                    planeHeight = 5.5;
+                } else {
+                    fontSize = 180;
+                    planeWidth = 22;
+                    planeHeight = 5;
+                }
+
+                nameCanvas.width = fontSize * 8;
+                nameCanvas.height = fontSize * 2;
+                const nctx = nameCanvas.getContext('2d');
+                
+                nctx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
+
+                nctx.strokeStyle = 'rgba(0,0,0,0.8)';
+                nctx.lineWidth = 12;
+                nctx.font = `900 ${fontSize}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+                nctx.textAlign = 'center';
+                nctx.textBaseline = 'middle';
+                nctx.strokeText(member.name, nameCanvas.width / 2, nameCanvas.height / 2);
+                
+                nctx.fillStyle = member.color;
+                nctx.font = `900 ${fontSize}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+                nctx.fillText(member.name, nameCanvas.width / 2, nameCanvas.height / 2);
+
+                const nameTexture = new THREE.CanvasTexture(nameCanvas);
+                const nameMat = new THREE.MeshBasicMaterial({
+                    map: nameTexture,
+                    transparent: true,
+                    side: THREE.DoubleSide,
+                    depthTest: true,
+                    depthWrite: false,
+                });
+                const nameGeom = new THREE.PlaneGeometry(planeWidth, planeHeight);
+                const nameMesh = new THREE.Mesh(nameGeom, nameMat);
+                nameMesh.rotation.x = -Math.PI / 2;
+                nameMesh.rotation.z = Math.PI / 2;
+                nameMesh.position.set(laneX, 0.07, -8);
+                scene.add(nameMesh);
+
+                bodyGroup.position.set(laneX, 0, 0);
+                bodyGroup.castShadow = true;
+                scene.add(bodyGroup);
+
+                runners.push({
+                    member,
+                    mesh: bodyGroup,
+                    nameMesh,
+                    torso,
+                    leftArm: leftArmGroup,
+                    rightArm: rightArmGroup,
+                    leftLeg: leftLegGroup,
+                    rightLeg: rightLegGroup,
+                    lane: index,
+                    laneX,
+                    position: 0,
+                    speed: 15.0 + Math.random() * 2.0,
+                    baseSpeed: 15.0,
+                    slowdownTimer: 0,
+                    speedBoostTimer: 0,
+                    animPhase: Math.random() * Math.PI * 2,
+                    finished: false,
+                    finishTime: 0,
+                    ultimateActive: false,
+                    tiltPhase: Math.random() * Math.PI * 2,
+                    isJumping: false,
+                    jumpPhase: 0,
+                    jumpHeight: 0,
+                    jumpStartPos: 0,
+                    isSprinting: false,
+                    sprintSpeed: 0,
+                    sprintEffects: null,
+                    currentEvent: null,
+                    hurdleFailCount: 0,
+                    currentRank: index + 1
+                });
+            });
+        }
+
+        function createObstacles() {
+            obstacles = [];
+            const selectedArray = Array.from(selectedMembers);
+            const laneCount = selectedArray.length;
+            const laneWidth = 6;
+            const trackWidth = laneCount * laneWidth;
+            
+            const minSpacing = 25;
+
+            for (let lane = 0; lane < laneCount; lane++) {
+                const laneX = -trackWidth / 2 + laneWidth / 2 + lane * laneWidth;
+                
+                const trackStart = 60;
+                const trackEnd = trackLength - 50;
+                const availableLength = trackEnd - trackStart;
+                
+                const numHurdles = 3 + Math.floor(Math.random() * 3);
+                const numGravels = 2 + Math.floor(Math.random() * 2);
+                const numBoosts = 2 + Math.floor(Math.random() * 3);
+                const totalObstacles = numHurdles + numGravels + numBoosts;
+                
+                const positions = [];
+                for (let i = 0; i < totalObstacles; i++) {
+                    let attempts = 0;
+                    let validPos = false;
+                    let newPos;
+                    
+                    while (!validPos && attempts < 100) {
+                        newPos = trackStart + Math.random() * availableLength;
+                        validPos = true;
+                        
+                        for (const existingPos of positions) {
+                            if (Math.abs(newPos - existingPos) < minSpacing) {
+                                validPos = false;
+                                break;
+                            }
+                        }
+                        attempts++;
+                    }
+                    
+                    if (validPos) {
+                        positions.push(newPos);
+                    }
+                }
+                
+                positions.sort(() => Math.random() - 0.5);
+                
+                let posIndex = 0;
+                
+                for (let i = 0; i < numHurdles && posIndex < positions.length; i++) {
+                    const zPos = positions[posIndex++];
+                    
+                    const hurdleGroup = new THREE.Group();
+                    
+                    const bar = new THREE.Mesh(sharedGeometries.hurdleBar, sharedMaterials.hurdleBar);
+                    bar.position.y = 0.7;
+                    hurdleGroup.add(bar);
+                    
+                    const leftPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole);
+                    leftPole.position.set(-1.5, 0.35, 0);
+                    hurdleGroup.add(leftPole);
+                    
+                    const rightPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole);
+                    rightPole.position.set(1.5, 0.35, 0);
+                    hurdleGroup.add(rightPole);
+                    
+                    const leftReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector);
+                    leftReflector.position.set(-1.5, 0.7, 0);
+                    hurdleGroup.add(leftReflector);
+                    
+                    const rightReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector);
+                    rightReflector.position.set(1.5, 0.7, 0);
+                    hurdleGroup.add(rightReflector);
+
+                    hurdleGroup.position.set(laneX, 0, zPos);
+                    scene.add(hurdleGroup);
+                    obstacles.push({ type: 'hurdle', mesh: hurdleGroup, lane, zPos });
+                }
+
+                for (let i = 0; i < numGravels && posIndex < positions.length; i++) {
+                    const zPos = positions[posIndex++];
+                    
+                    const gravelGroup = new THREE.Group();
+                    
+                    for (let j = 0; j < 40; j++) {
+                        const size = 0.12 + Math.random() * 0.2;
+                        const matIndex = Math.floor(Math.random() * sharedMaterials.gravelColors.length);
+                        const stone = new THREE.Mesh(sharedGeometries.stone, sharedMaterials.gravelColors[matIndex]);
+                        stone.scale.set(size, size, size);
+                        
+                        stone.position.set(
+                            (Math.random() - 0.5) * 4.2,
+                            size / 2,
+                            (Math.random() - 0.5) * 4.2
+                        );
+                        
+                        stone.rotation.set(
+                            Math.random() * Math.PI * 2,
+                            Math.random() * Math.PI * 2,
+                            Math.random() * Math.PI * 2
+                        );
+                        
+                        stone.castShadow = true;
+                        gravelGroup.add(stone);
+                    }
+
+                    gravelGroup.position.set(laneX, 0, zPos);
+                    scene.add(gravelGroup);
+                    obstacles.push({ type: 'gravel', mesh: gravelGroup, lane, zPos });
+                }
+
+                for (let i = 0; i < numBoosts && posIndex < positions.length; i++) {
+                    const zPos = positions[posIndex++];
+                    
+                    const boostGroup = new THREE.Group();
+                    
+                    const arrow = new THREE.Mesh(sharedGeometries.boostArrow, sharedMaterials.boostArrow);
+                    arrow.rotation.x = -Math.PI / 2;
+                    arrow.rotation.z = Math.PI;
+                    arrow.position.y = 0.05;
+                    boostGroup.add(arrow);
+                    
+                    const base = new THREE.Mesh(sharedGeometries.boostBase, sharedMaterials.boostBase);
+                    base.rotation.x = -Math.PI / 2;
+                    base.position.y = 0.03;
+                    boostGroup.add(base);
+                    
+                    const ring = new THREE.Mesh(sharedGeometries.boostRing, sharedMaterials.boostRing);
+                    ring.rotation.x = -Math.PI / 2;
+                    ring.position.y = 0.06;
+                    boostGroup.add(ring);
+
+                    boostGroup.position.set(laneX, 0.05, zPos);
+                    scene.add(boostGroup);
+                    obstacles.push({ type: 'boost', mesh: boostGroup, lane, zPos });
+                }
+            }
+        }
+
+        function triggerSprintPhase() {
+            if (sprintPhaseStarted || ultimateUsed || !sprintEnabled) return;
+            
+            sprintPhaseStarted = true;
+            ultimateUsed = true;
+            ultimateActive = true;
+            
+            document.getElementById('sprintScreenEffect').classList.remove('hidden');
+            document.getElementById('sprintSpeedLines').classList.remove('hidden');
+            document.getElementById('sprintWindEffect').classList.remove('hidden');
+            
+            const activeRunners = runners.filter(r => !r.finished);
+            if (activeRunners.length === 0) return;
+            
+            const sortedByPosition = [...activeRunners].sort((a, b) => b.position - a.position);
+            
+            const weights = [];
+            const totalRunners = sortedByPosition.length;
+            
+            sortedByPosition.forEach((runner, index) => {
+                const rankFromBottom = totalRunners - index;
+                const weight = Math.pow(rankFromBottom, 2.5);
+                weights.push({ runner, weight });
+            });
+            
+            let numSprinters = 1;
+            if (Math.random() < 0.1 && totalRunners > 1) {
+                numSprinters = 2;
+            }
+            
+            sprintRunners = [];
+            const selectedWeights = [...weights];
+            
+            for (let i = 0; i < Math.min(numSprinters, totalRunners); i++) {
+                let randomValue = Math.random() * selectedWeights.reduce((sum, item) => sum + item.weight, 0);
+                let selectedIndex = 0;
+                
+                for (let j = 0; j < selectedWeights.length; j++) {
+                    randomValue -= selectedWeights[j].weight;
+                    if (randomValue <= 0) {
+                        selectedIndex = j;
+                        break;
+                    }
+                }
+                
+                const selected = selectedWeights[selectedIndex].runner;
+                sprintRunners.push(selected);
+                
+                selectedWeights.splice(selectedIndex, 1);
+            }
+            
+            sprintRunners.forEach(runner => {
+                runner.isSprinting = true;
+                runner.ultimateActive = true;
+                runner.sprintSpeed = runner.speed * (1.4 + Math.random() * 0.5);
+                
+                addSprintVisualEffects(runner);
+            });
+            
+            const mainSprintColor = sprintRunners[0].member.color;
+            const sprintNames = sprintRunners.map(r => r.member.name).join(', ');
+            showUltimate(`${sprintNames} 전력 질주!`, mainSprintColor);
+            
+            createWindEffect();
+            
+            setTimeout(() => {
+                showEvent(`${sprintNames} 스프린트!`, 'sprint', mainSprintColor, 2000);
+            }, 1500);
+            
+            setTimeout(() => {
+                sprintRunners.forEach(runner => {
+                    runner.isSprinting = false;
+                    runner.ultimateActive = false;
+                    runner.speed = runner.baseSpeed + Math.random() * 2.0;
+                    
+                    removeSprintVisualEffects(runner);
+                });
+                ultimateActive = false;
+                document.getElementById('ultimateAlert').classList.add('hidden');
+                document.getElementById('sprintScreenEffect').classList.add('hidden');
+                document.getElementById('sprintSpeedLines').classList.add('hidden');
+                document.getElementById('sprintWindEffect').classList.add('hidden');
+            }, 5000);
+        }
+
+        function createWindEffect() {
+            const windContainer = document.getElementById('sprintWindEffect');
+            windContainer.innerHTML = '';
+            
+            const numLines = 12;
+            for (let i = 0; i < numLines; i++) {
+                const line = document.createElement('div');
+                line.className = 'wind-line';
+                
+                const topPos = Math.random() * 100;
+                const delay = Math.random() * 2;
+                const duration = 0.2 + Math.random() * 0.3;
+                const opacity = 0.2 + Math.random() * 0.4;
+                const height = 1 + Math.random() * 3;
+                
+                line.style.top = `${topPos}%`;
+                line.style.left = '100%';
+                line.style.width = `${20 + Math.random() * 40}px`;
+                line.style.height = `${height}px`;
+                line.style.opacity = opacity;
+                line.style.animationDelay = `${delay}s`;
+                line.style.animationDuration = `${duration}s`;
+                
+                windContainer.appendChild(line);
+            }
+        }
+
+        function addSprintVisualEffects(runner) {
+            const effectGroup = new THREE.Group();
+            const color = new THREE.Color(runner.member.color);
+
+            const trailCount = 5;
+            const trails = [];
+            const trailMat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+
+            for (let i = 0; i < trailCount; i++) {
+                const angle = (i / trailCount) * Math.PI * 2;
+                const radius = 1.2 + Math.random() * 0.5;
+                const trail = new THREE.Mesh(sharedGeometries.trailPlane, trailMat.clone());
+                trail.position.set(
+                    Math.cos(angle) * radius,
+                    1.2 + Math.sin(angle) * 0.8,
+                    -3
+                );
+                trail.scale.y = 6 + Math.random() * 4;
+                trail.rotation.x = Math.PI / 2;
+                trail.userData = { angle, radius, baseZ: -3, phase: Math.random() * Math.PI * 2 };
+                effectGroup.add(trail);
+                trails.push(trail);
+            }
+
+            const particleCount = 15;
+            const particlePositions = new Float32Array(particleCount * 3);
+            const particleVelocities = [];
+            for (let i = 0; i < particleCount; i++) {
+                particlePositions[i * 3] = (Math.random() - 0.5) * 2.5;
+                particlePositions[i * 3 + 1] = 0.5 + Math.random() * 2;
+                particlePositions[i * 3 + 2] = -2 - Math.random() * 10;
+                particleVelocities.push({ z: -(20 + Math.random() * 15) });
+            }
+            const particleGeom = new THREE.BufferGeometry();
+            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.2,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const particles = new THREE.Points(particleGeom, particleMat);
+            effectGroup.add(particles);
+
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.4,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const ring = new THREE.Mesh(sharedGeometries.boostRing, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.1;
+            ring.userData = { scale: 1, opacity: 0.4 };
+            effectGroup.add(ring);
+
+            runner.mesh.add(effectGroup);
+
+            runner.sprintEffects = {
+                effectGroup,
+                trails,
+                particles,
+                particleVelocities,
+                ring,
+                time: 0
+            };
+        }
+
+        function removeSprintVisualEffects(runner) {
+            if (runner.sprintEffects) {
+                runner.mesh.remove(runner.sprintEffects.effectGroup);
+                
+                runner.sprintEffects.trails.forEach(t => { t.material.dispose(); });
+                runner.sprintEffects.particles.geometry.dispose();
+                runner.sprintEffects.particles.material.dispose();
+                runner.sprintEffects.ring.material.dispose();
+                
+                runner.sprintEffects = null;
+            }
+        }
+
+        function updateSprintEffects(runner, delta) {
+            if (!runner.sprintEffects) return;
+            
+            const effects = runner.sprintEffects;
+            effects.time += delta;
+
+            effects.trails.forEach((trail) => {
+                const pulse = 0.5 + Math.sin(effects.time * 8 + trail.userData.phase) * 0.3;
+                trail.material.opacity = pulse;
+            });
+
+            const positions = effects.particles.geometry.attributes.position.array;
+            for (let i = 0; i < effects.particleVelocities.length; i++) {
+                positions[i * 3 + 2] += effects.particleVelocities[i].z * delta * 3;
+                if (positions[i * 3 + 2] < -14) {
+                    positions[i * 3] = (Math.random() - 0.5) * 2.5;
+                    positions[i * 3 + 1] = 0.5 + Math.random() * 2;
+                    positions[i * 3 + 2] = -1;
+                }
+            }
+            effects.particles.geometry.attributes.position.needsUpdate = true;
+
+            effects.ring.userData.scale += delta * 4;
+            effects.ring.userData.opacity -= delta * 0.8;
+            if (effects.ring.userData.opacity <= 0) {
+                effects.ring.userData.scale = 1;
+                effects.ring.userData.opacity = 0.5;
+            }
+            effects.ring.scale.set(effects.ring.userData.scale, effects.ring.userData.scale, 1);
+            effects.ring.material.opacity = Math.max(0, effects.ring.userData.opacity);
+        }
+
+        function updateRunners(delta) {
+            if (!raceStarted) return;
+            
+            if (raceEnded) {
+                runners.forEach(runner => {
+                    const animSpeed = 5;
+                    runner.animPhase += delta * animSpeed;
+                    const armSwing = Math.sin(runner.animPhase) * 0.2;
+                    const legSwing = Math.sin(runner.animPhase) * 0.1;
+
+                    runner.leftArm.rotation.x = armSwing;
+                    runner.rightArm.rotation.x = -armSwing;
+                    runner.leftLeg.rotation.x = -legSwing;
+                    runner.rightLeg.rotation.x = legSwing;
+                    
+                    if (!runner.isJumping) {
+                        runner.mesh.position.y = Math.abs(Math.sin(runner.animPhase * 2)) * 0.05;
+                    }
+                });
+                return;
+            }
+
+            const effectiveDelta = delta * slowMotionFactor;
+            gameTime += effectiveDelta;
+            
+            const leader = runners.reduce((a, b) => (a.position > b.position ? a : b));
+            const leaderProgress = leader.position / trackLength;
+            
+            if (leaderProgress > 0.80 && !sprintPhaseStarted && !ultimateUsed && sprintEnabled) {
+                triggerSprintPhase();
+            }
+
+            runners.forEach(runner => {
+                runner.nameMesh.position.z = runner.position - 8;
+
+                if (runner.isJumping) {
+                    runner.jumpPhase += effectiveDelta * 15;
+                    if (runner.jumpPhase < Math.PI) {
+                        runner.jumpHeight = Math.sin(runner.jumpPhase) * 2.5;
+                        runner.mesh.position.y = runner.jumpHeight;
+                    } else {
+                        runner.isJumping = false;
+                        runner.jumpHeight = 0;
+                        runner.mesh.position.y = 0;
+                    }
+                }
+
+                if (!runner.finished) {
+                    obstacles.forEach(obs => {
+                        const distanceToObs = obs.zPos - runner.position;
+                        
+                        if (obs.lane === runner.lane && Math.abs(distanceToObs) < 2.5) {
+                            if (obs.type === 'hurdle' && !runner.isJumping && runner.slowdownTimer <= 0) {
+                                if (distanceToObs > 0 && distanceToObs < 2) {
+                                    runner.isJumping = true;
+                                    runner.jumpPhase = 0;
+                                    
+                                    const baseSuccessRate = 0.5;
+                                    const bonusFromFails = runner.hurdleFailCount * 0.15;
+                                    const successRate = Math.min(0.95, baseSuccessRate + bonusFromFails);
+                                    
+                                    if (Math.random() < successRate) {
+                                        showEvent(`${runner.member.name} 점프 성공!`, 'hurdle', runner.member.color, 1000);
+                                        runner.hurdleFailCount = 0;
+                                    } else {
+                                        runner.slowdownTimer = 12;
+                                        showEvent(`${runner.member.name} 허들 넘어짐!`, 'hurdle', runner.member.color);
+                                        runner.tiltPhase = 0;
+                                        runner.hurdleFailCount++;
+                                    }
+                                }
+                            } else if (obs.type === 'gravel' && runner.slowdownTimer <= 0 && !runner.isJumping) {
+                                if (Math.abs(distanceToObs) < 2) {
+                                    runner.slowdownTimer = 25;
+                                    runner.speed *= 0.8;
+                                    showEvent(`${runner.member.name} 자갈밭 감속!`, 'gravel', runner.member.color);
+                                    runner.tiltPhase = 0;
+                                }
+                            } else if (obs.type === 'boost' && runner.speedBoostTimer <= 0 && !runner.isJumping) {
+                                if (Math.abs(distanceToObs) < 1.5) {
+                                    runner.speedBoostTimer = 40;
+                                    runner.speed *= 1.5;
+                                    showEvent(`${runner.member.name} 속도 UP!`, 'boost', runner.member.color, 1000);
+                                }
+                            }
+                        }
+                    });
+                }
+
+                if (runner.slowdownTimer > 0) {
+                    runner.slowdownTimer -= effectiveDelta * 60;
+                    if (runner.slowdownTimer <= 0) {
+                        runner.speed = runner.baseSpeed + Math.random() * 2.0;
+                        if (runner.isSprinting) {
+                            runner.speed = runner.sprintSpeed;
+                        }
+                    }
+                }
+
+                if (runner.speedBoostTimer > 0) {
+                    runner.speedBoostTimer -= effectiveDelta * 60;
+                    if (runner.speedBoostTimer <= 0) {
+                        runner.speed = runner.baseSpeed + Math.random() * 2.0;
+                        if (runner.isSprinting) {
+                            runner.speed = runner.sprintSpeed;
+                        }
+                    }
+                }
+
+                let currentSpeed = runner.speed;
+                if (runner.isSprinting && runner.slowdownTimer <= 0 && runner.speedBoostTimer <= 0) {
+                    currentSpeed = runner.sprintSpeed;
+                }
+
+                if (runner.slowdownTimer > 0 && runner.slowdownTimer < 12) {
+                } else if (!runner.isJumping) {
+                    runner.position += currentSpeed * effectiveDelta;
+                } else {
+                    runner.position += currentSpeed * effectiveDelta * 0.8;
+                }
+                runner.mesh.position.z = runner.position;
+
+                if (!runner.finished && runner.position >= trackLength) {
+                    runner.finished = true;
+                    runner.finishTime = gameTime;
+                    runner.isSprinting = false;
+                    runner.ultimateActive = false;
+                    finishedRunners.push(runner);
+                }
+
+                const animSpeed = runner.ultimateActive ? 35 : (runner.isJumping ? 30 : 22);
+                runner.animPhase += effectiveDelta * animSpeed;
+                const armSwing = Math.sin(runner.animPhase) * 0.8;
+                const legSwing = Math.sin(runner.animPhase) * 0.3;
+
+                runner.leftArm.rotation.x = armSwing;
+                runner.rightArm.rotation.x = -armSwing;
+                runner.leftLeg.rotation.x = -legSwing;
+                runner.rightLeg.rotation.x = legSwing;
+                
+                if (!runner.isJumping) {
+                    runner.mesh.position.y = Math.abs(Math.sin(runner.animPhase * 2)) * 0.15;
+                }
+                
+                if (runner.slowdownTimer > 0) {
+                    runner.tiltPhase += effectiveDelta * 60;
+                    const tilt = Math.sin(runner.tiltPhase * 0.2) * 0.5;
+                    runner.mesh.rotation.z = tilt;
+                } else {
+                    runner.mesh.rotation.z = 0;
+                }
+                
+                if (runner.isSprinting && runner.sprintEffects) {
+                    updateSprintEffects(runner, effectiveDelta);
+                }
+            });
+        }
+
+        function updateCamera() {
+            if (startingSequence) return;
+            
+            const sortedRunners = [...runners].sort((a, b) => b.position - a.position);
+            const leader = sortedRunners[0];
+            const second = sortedRunners.length > 1 ? sortedRunners[1] : null;
+            const progress = leader.position / trackLength;
+
+            const sprintingRunners = runners.filter(r => r.isSprinting);
+
+            if (!gapMode && progress > 0.94 && finishedRunners.length < passCount) {
+                if (!slowMotion) {
+                    slowMotion = true;
+                    slowMotionFactor = 0.7;
+                    currentCameraMode = 'finish';
+                }
+            }
+
+            if (!gapMode && currentCameraMode !== 'finish') {
+                cameraChangeTimer += 1 / 60;
+                if (cameraChangeTimer > 4 && !slowMotion) {
+                    cameraChangeTimer = 0;
+                    const modes = ['overview', 'side', 'front'];
+                    currentCameraMode = modes[Math.floor(Math.random() * modes.length)];
+                }
+            }
+
+            const targetPos = new THREE.Vector3();
+            const lookAtPos = new THREE.Vector3();
+
+            let primaryTarget = leader;
+            let secondaryTarget = second;
+            
+            if (sprintingRunners.length > 0 && !gapMode) {
+                primaryTarget = sprintingRunners[0];
+                if (sprintingRunners.length > 1) {
+                    secondaryTarget = sprintingRunners[1];
+                } else if (sprintingRunners[0] !== leader) {
+                    secondaryTarget = leader;
+                } else {
+                    secondaryTarget = second;
+                }
+            }
+
+            const selectedArray = Array.from(selectedMembers);
+            const laneCount = selectedArray.length;
+            const laneWidth = 6;
+            const trackWidth = laneCount * laneWidth;
+
+            camera.up.set(0, 1, 0);
+
+            if (gapMode && gapRunnerA && gapRunnerB) {
+                const midX = (gapRunnerA.laneX + gapRunnerB.laneX) / 2;
+                const midZ = (gapRunnerA.position + gapRunnerB.position) / 2;
+                
+                const gapDistance = Math.abs(gapRunnerA.position - gapRunnerB.position);
+                const laneDistance = Math.abs(gapRunnerA.laneX - gapRunnerB.laneX);
+                
+                const sideDistance = Math.max(30, 20 + laneDistance * 0.8 + gapDistance * 0.5);
+                
+                targetPos.set(midX + sideDistance, 15, midZ);
+                lookAtPos.set(midX, 2, midZ);
+            } else {
+                switch (currentCameraMode) {
+                    case 'overview':
+                        targetPos.set(25, 40, primaryTarget.position - 25);
+                        lookAtPos.set(5, 0, primaryTarget.position);
+                        break;
+                    case 'side':
+                        {
+                            const camY = 10;
+                            if (secondaryTarget && secondaryTarget !== primaryTarget) {
+                                const midZ = (primaryTarget.position + secondaryTarget.position) / 2;
+                                const laneDistance = Math.abs(primaryTarget.laneX - secondaryTarget.laneX);
+                                const sideDistance = Math.max(trackWidth * 0.7, 35 + laneDistance * 0.5);
+                                
+                                targetPos.set(sideDistance, camY, midZ);
+                                lookAtPos.set(0, 2, midZ);
+                            } else {
+                                const sideDistance = Math.max(trackWidth * 0.7, 35);
+                                targetPos.set(sideDistance, camY, primaryTarget.position);
+                                lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
+                            }
+                        }
+                        break;
+                    case 'front':
+                        {
+                            const camY = 6;
+                            if (secondaryTarget && secondaryTarget !== primaryTarget) {
+                                const sideDir = primaryTarget.laneX > secondaryTarget.laneX ? 1 : -1;
+                                const sideOffset = 8 * sideDir;
+                                
+                                targetPos.set(primaryTarget.laneX + sideOffset, camY, primaryTarget.position + 25);
+                                lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
+                            } else {
+                                targetPos.set(10, camY, primaryTarget.position + 20);
+                                lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
+                            }
+                        }
+                        break;
+                    case 'finish':
+                        {
+                            const camHeight = Math.max(trackWidth * 1.2, 60);
+                            targetPos.set(0, camHeight, trackLength);
+                            lookAtPos.set(0, 0, trackLength);
+                            camera.up.set(-1, 0, 0);
+                        }
+                        break;
+                }
+            }
+
+            if (currentCameraMode !== prevCameraMode && !gapMode) {
+                camera.position.copy(targetPos);
+                if (!camera.lookAtVector) {
+                    camera.lookAtVector = new THREE.Vector3();
+                }
+                camera.lookAtVector.copy(lookAtPos);
+                camera.lookAt(lookAtPos);
+                prevCameraMode = currentCameraMode;
+            } else {
+                const lerpSpeed = gapMode ? 0.1 : (slowMotion ? 0.08 : 0.06);
+                
+                camera.position.lerp(targetPos, lerpSpeed);
+                
+                if (currentCameraMode !== 'finish') {
+                    camera.position.y = targetPos.y;
+                }
+                
+                if (camera.lookAtVector) {
+                    camera.lookAtVector.lerp(lookAtPos, lerpSpeed);
+                    if (currentCameraMode !== 'finish') {
+                        camera.lookAtVector.y = lookAtPos.y;
+                    }
+                    camera.lookAt(camera.lookAtVector);
+                } else {
+                    camera.lookAtVector = lookAtPos.clone();
+                    camera.lookAt(lookAtPos);
+                }
+            }
+        }
+
+        function updateRankingPanel() {
+            const sortedRunners = [...runners].sort((a, b) => {
+                if (a.finished && b.finished) return a.finishTime - b.finishTime;
+                if (a.finished) return -1;
+                if (b.finished) return 1;
+                return b.position - a.position;
+            });
+
+            const rankingList = document.getElementById('rankingList');
+            rankingList.innerHTML = '';
+
+            sortedRunners.forEach((runner, index) => {
+                const rank = index + 1;
+                const isPass = rank <= passCount;
+                const isConfirmed = runner.finished && rank <= passCount;
+                
+                if (isConfirmed && !confirmedRanks.has(runner.member.id)) {
+                    confirmedRanks.add(runner.member.id);
+                }
+
+                let iconContent = '';
+                if (confirmedRanks.has(runner.member.id)) {
+                     iconContent = '<span class="crown-icon text-sm">✅</span>';
+                } else if (runner.isSprinting) {
+                     iconContent = '<span class="text-yellow-400">🏃‍➡️</span>';
+                } else if (runner.isJumping) {
+                     iconContent = '<span>🚧</span>';
+                } else if (runner.slowdownTimer > 0) {
+                     iconContent = '<span class="text-orange-400">🪨</span>';
+                } else if (runner.speedBoostTimer > 0) {
+                     iconContent = '<span class="text-green-400">🪽</span>';
+                }
+
+                const div = document.createElement('div');
+                let sprintClass = runner.isSprinting ? 'sprint-effect' : '';
+                
+                const displayName = runner.member.name.length === 2 ? runner.member.name + '　' : runner.member.name;
+                
+                div.className = `ranking-item flex items-center gap-1 p-1 rounded text-sm ${isPass ? 'bg-green-900/40' : 'bg-gray-700/40'} ${confirmedRanks.has(runner.member.id) ? 'ranking-item-confirmed' : ''} ${sprintClass}`;
+                div.style.setProperty('color', runner.isSprinting ? runner.member.color : '');
+                div.innerHTML = `
+                    <span class="w-6 text-center font-bold text-sm" style="color: ${runner.member.color}">${rank}</span>
+                    <img src="${runner.member.imgPng}" class="w-6 h-6 rounded-full object-cover">
+                    <span class="text-xs font-bold truncate w-auto max-w-[100px] flex-1" style="color: ${runner.member.color}">${displayName}</span>
+                    <span class="w-8 inline-flex justify-center items-center">${iconContent}</span>
+                `;
+                rankingList.appendChild(div);
+            });
+        }
+
+        function showUltimate(text, color = '#22c55e') {
+            const alert = document.getElementById('ultimateAlert');
+            const textDiv = alert.querySelector('div');
+            textDiv.textContent = text;
+            textDiv.style.color = color;
+            textDiv.style.textShadow = 'none';
+            alert.classList.remove('hidden');
+        }
+
+        function showEvent(text, type, color = '#22c55e', duration = 1500) {
+            if (ultimateActive && type !== 'sprint') return;
+            
+            const alert = document.getElementById('eventAlert');
+            const textDiv = alert.querySelector('div');
+            
+            let icon = '';
+            switch(type) {
+                case 'hurdle':
+                    icon = `<span style="font-size: 2rem;">🚧</span>`;
+                    break;
+                case 'gravel':
+                    icon = `<span style="font-size: 2rem;">🪨</span>`;
+                    break;
+                case 'boost':
+                    icon = `<span style="font-size: 2rem;">🪽</span>`;
+                    break;
+                case 'sprint':
+                    icon = `<span style="font-size: 2.2rem;">🏃‍➡️</span>`;
+                    break;
+            }
+            
+            textDiv.innerHTML = `${icon}<span style="color: ${color};">${text}</span>`;
+            textDiv.style.gap = '12px';
+            alert.classList.remove('hidden');
+            setTimeout(() => alert.classList.add('hidden'), duration);
+        }
+
+        function createGapVisuals(runnerA, runnerB) {
+            // runnerA = last passing runner (further ahead, higher Z)
+            // runnerB = first failing runner (behind, lower Z)
+            // Torso: BoxGeometry(2.2, 2.2, 1.4) at y=1.8
+            // Front of runner (in running direction +Z) = position + 0.7 (half of torso depth 1.4)
+            // Top of runner = 1.8 + 1.1 = 2.9 (torso center y + half torso height)
+            const frontOffset = 0.7;
+            const topY = 2.9;
+
+            const passZ = runnerA.position + frontOffset;
+            const failZ = runnerB.position + frontOffset;
+            const distance = Math.abs(passZ - failZ);
+
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.7 });
+            const lineMatBright = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.9 });
+
+            // 1. Horizontal red line at the last passing runner's front-top Z position
+            const horizontalLength = Math.abs(runnerA.laneX - runnerB.laneX);
+            const midX = (runnerA.laneX + runnerB.laneX) / 2;
+
+            if (horizontalLength > 0.1) {
+                const hLineGeom = new THREE.CylinderGeometry(0.08, 0.08, horizontalLength, 8);
+                const hLine = new THREE.Mesh(hLineGeom, lineMat);
+                hLine.rotation.z = Math.PI / 2;
+                hLine.position.set(midX, topY, passZ);
+                scene.add(hLine);
+            }
+
+            // 2. Vertical distance line (along Z axis) from the horizontal line down to the failing runner's front
+            if (distance > 0.01) {
+                const vLineGeom = new THREE.CylinderGeometry(0.08, 0.08, distance, 8);
+                const vLine = new THREE.Mesh(vLineGeom, lineMatBright);
+                vLine.rotation.x = Math.PI / 2;
+                vLine.position.set(runnerB.laneX, topY, (passZ + failZ) / 2);
+                scene.add(vLine);
+            }
+
+            // End cap markers
+            const endCapGeom = new THREE.BoxGeometry(3.0, 0.15, 0.15);
+
+            const capTop = new THREE.Mesh(endCapGeom, lineMatBright);
+            capTop.position.set(runnerB.laneX, topY, passZ);
+            scene.add(capTop);
+
+            const capBottom = new THREE.Mesh(endCapGeom, lineMatBright);
+            capBottom.position.set(runnerB.laneX, topY, failZ);
+            scene.add(capBottom);
+
+            // Show the gap alert UI
+            const gapAlert = document.getElementById('gapAlert');
+            const gapDiv = gapAlert.querySelector('div');
+            const distanceText = distance.toFixed(2);
+
+            const closeThreshold = 2;
+            const isClose = distance < closeThreshold;
+            const titleText = isClose ? '아깝다!' : '아깝지는 않다!';
+            const titleColor = isClose ? 'text-yellow-400' : 'text-gray-400';
+
+            gapDiv.innerHTML = `
+                <div class="text-xl ${titleColor}">${titleText}</div>
+                <div class="text-4xl font-bold text-red-500">${distanceText}m 차이</div>
+            `;
+            gapAlert.classList.remove('hidden');
+        }
+
+        function showFinalGap() {
+            const sortedRunners = [...runners].sort((a, b) => {
+                if (a.finished && b.finished) return a.finishTime - b.finishTime;
+                if (a.finished) return -1;
+                if (b.finished) return 1;
+                return b.position - a.position;
+            });
+
+            const lastPassRunner = sortedRunners[passCount - 1];
+            const firstFailRunner = sortedRunners[passCount];
+
+            if (!firstFailRunner) {
+                gameRunning = false;
+                showResults();
+                return;
+            }
+
+            gapMode = true;
+            gapRunnerA = lastPassRunner;
+            gapRunnerB = firstFailRunner;
+
+            createGapVisuals(lastPassRunner, firstFailRunner);
+            
+            setTimeout(() => {
+                gameRunning = false;
+                document.getElementById('gapAlert').classList.add('hidden');
+                showResults();
+            }, 4000);
+        }
+
+        function checkGameEnd() {
+            if (!raceStarted || gameEndScheduled) return;
+            
+            if (finishedRunners.length >= passCount) {
+                gameEndScheduled = true;
+                raceEnded = true;
+                
+                document.getElementById('closeupOverlay').classList.add('hidden');
+                document.getElementById('sprintScreenEffect').classList.add('hidden');
+                document.getElementById('sprintSpeedLines').classList.add('hidden');
+                document.getElementById('sprintWindEffect').classList.add('hidden');
+                document.getElementById('eventAlert').classList.add('hidden');
+                document.getElementById('ultimateAlert').classList.add('hidden');
+
+                showFinalGap();
+            }
+        }
+
+        function showResults() {
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+            
+            const resultList = document.getElementById('resultList');
+            const resultContainer = document.getElementById('resultContainer');
+            resultList.innerHTML = '';
+
+            const count = runners.length;
+            
+            // 기본 설정 (6, 11, 12명 등)
+            let gridCols = 'grid-cols-3 md:grid-cols-6';
+            let containerMaxW = 'max-w-7xl';
+
+            if (count >= 2 && count <= 5) {
+                // 1. 2~5명일 때: 인원수에 맞게 폭 조절 (1줄)
+                gridCols = `grid-cols-2 md:grid-cols-${count}`;
+                
+                // 컨테이너 폭 조절
+                if (count === 2) containerMaxW = 'max-w-2xl';
+                else if (count === 3) containerMaxW = 'max-w-4xl';
+                else if (count === 4) containerMaxW = 'max-w-5xl';
+                else if (count === 5) containerMaxW = 'max-w-6xl';
+                
+            } else if (count >= 7 && count <= 8) {
+                // 2. 7~8명일 때: 2행 4열
+                gridCols = 'grid-cols-2 md:grid-cols-4';
+                containerMaxW = 'max-w-5xl';
+                
+            } else if (count >= 9 && count <= 10) {
+                // 3. 9~10명일 때: 2행 5열
+                gridCols = 'grid-cols-2 md:grid-cols-5';
+                containerMaxW = 'max-w-6xl';
+            }
+
+            // 클래스 적용
+            resultList.className = `grid gap-4 mb-6 ${gridCols}`;
+            resultContainer.className = `bg-gray-800 rounded-3xl p-8 w-full ${containerMaxW} transition-all duration-300`;
+
+            const sortedRunners = [...runners].sort((a, b) => {
+                if (a.finished && b.finished) return a.finishTime - b.finishTime;
+                if (a.finished) return -1;
+                if (b.finished) return 1;
+                return b.position - a.position;
+            });
+
+            sortedRunners.forEach((runner, index) => {
+                const rank = index + 1;
+                const isPass = rank <= passCount;
+                const div = document.createElement('div');
+                div.className = `bg-gray-700 rounded-xl p-3 border-2 ${isPass ? 'border-green-500' : 'border-transparent'}`;
+                div.innerHTML = `
+                    <div class="aspect-square rounded-lg overflow-hidden mb-2 relative">
+                        <img src="${runner.member.imgPng}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="text-center">
+                        <div class="flex items-center justify-center gap-1 mb-1">
+                            <span class="bg-black/70 rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm" style="color: ${runner.member.color}">${rank}</span>
+                            <span class="font-bold text-sm" style="color: ${runner.member.color}">${runner.member.name}</span>
+                        </div>
+                        <div class="text-xs font-bold ${isPass ? 'text-green-400' : 'text-red-400'}">${isPass ? '합격' : '탈락'}</div>
+                    </div>
+                `;
+                resultList.appendChild(div);
+            });
+        }
+
+        function updateNameSubtitles() {
+            if (!raceStarted) return;
+            
+            const sortedRunners = [...runners].sort((a, b) => {
+                if (a.finished && b.finished) return a.finishTime - b.finishTime;
+                if (a.finished) return -1;
+                if (b.finished) return 1;
+                return b.position - a.position;
+            });
+
+            let ranksChanged = false;
+            sortedRunners.forEach((runner, index) => {
+                const rank = index + 1;
+                if (previousRanks[runner.member.id] !== rank) {
+                    ranksChanged = true;
+                }
+            });
+
+            if (!ranksChanged) return;
+
+            sortedRunners.forEach((runner, index) => {
+                const rank = index + 1;
+                previousRanks[runner.member.id] = rank;
+                runner.currentRank = rank;
+
+                const nameCanvas = document.createElement('canvas');
+                const nameLength = runner.member.name.length;
+                let fontSize, planeWidth, planeHeight;
+                
+                if (nameLength <= 2) {
+                    fontSize = 220;
+                    planeWidth = 20;
+                    planeHeight = 5.5;
+                } else if (nameLength === 3) {
+                    fontSize = 220;
+                    planeWidth = 20;
+                    planeHeight = 5.5;
+                } else {
+                    fontSize = 180;
+                    planeWidth = 22;
+                    planeHeight = 5;
+                }
+
+                nameCanvas.width = fontSize * 8;
+                nameCanvas.height = fontSize * 2;
+                const nctx = nameCanvas.getContext('2d');
+                
+                nctx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
+
+                const rankX = nameCanvas.width * 0.35;
+                const nameX = nameCanvas.width * 0.65;
+
+                nctx.strokeStyle = 'rgba(0,0,0,0.8)';
+                nctx.lineWidth = 16;
+                nctx.font = `900 ${fontSize*1.2}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+                nctx.textAlign = 'center';
+                nctx.textBaseline = 'middle';
+                nctx.strokeText(rank.toString(), rankX, nameCanvas.height / 2);
+                
+                nctx.fillStyle = runner.member.color;
+                nctx.font = `900 ${fontSize*1.2}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+                nctx.fillText(rank.toString(), rankX, nameCanvas.height / 2);
+                
+                nctx.strokeStyle = 'rgba(0,0,0,0.8)';
+                nctx.lineWidth = 12;
+                nctx.font = `900 ${fontSize}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+                nctx.textAlign = 'center';
+                nctx.textBaseline = 'middle';
+
+                nctx.strokeText(runner.member.name, nameX, nameCanvas.height / 2);
+                nctx.fillStyle = runner.member.color;
+                nctx.font = `900 ${fontSize}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+                nctx.fillText(runner.member.name, nameX, nameCanvas.height / 2);
+
+                if (runner.nameMesh.material.map) {
+                    runner.nameMesh.material.map.dispose();
+                }
+                const nameTexture = new THREE.CanvasTexture(nameCanvas);
+                runner.nameMesh.material.map = nameTexture;
+                runner.nameMesh.material.needsUpdate = true;
+            });
+        }
+
+        let lastTime = 0;
+        function animate(currentTime = 0) {
+            if (!gameRunning) return;
+            const delta = Math.min((currentTime - lastTime) / 1000, 0.1);
+            lastTime = currentTime;
+            
+            updateRunners(delta);
+            updateCamera();
+            updateRankingPanel();
+            updateNameSubtitles();
+            
+            const gravelTime = gameTime * 2;
+            obstacles.forEach(obs => {
+                if (obs.type === 'gravel') {
+                    obs.mesh.rotation.z = Math.sin(gravelTime) * 0.05;
+                }
+            });
+            
+            checkGameEnd();
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+
+        createMemberGrid();
+        preloadImages();
+    </script>
+</body>
+</html>
