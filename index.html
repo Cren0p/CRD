@@ -284,10 +284,77 @@
             0% { transform: translateX(-50%) scale(1); }
             100% { transform: translateX(-50%) scale(1.05); }
         }
+
+        /* Volume Control Styles */
+        #volumeControl {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 12px;
+            padding: 8px 14px;
+            pointer-events: auto;
+        }
+        #volumeControl button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.4rem;
+            cursor: pointer;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        #volumeControl button:hover {
+            background: rgba(255,255,255,0.15);
+        }
+        #volumeSlider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100px;
+            height: 6px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+        #volumeSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 4px rgba(59,130,246,0.5);
+            transition: transform 0.15s;
+        }
+        #volumeSlider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        #volumeSlider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 4px rgba(59,130,246,0.5);
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
-    <div id="root"></div>
+
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="text-center">
             <div class="loading-spinner mx-auto mb-4"></div>
@@ -354,6 +421,13 @@
                 <div class="closeup-text">🔥 막판 접전! 🔥</div>
             </div>
         </div>
+
+        <!-- Volume Control UI -->
+        <div id="volumeControl">
+            <button id="muteBtn" onclick="toggleMute()" title="음소거">🔊</button>
+            <input type="range" id="volumeSlider" min="0" max="100" value="70" oninput="changeVolume(this.value)">
+        </div>
+
         <div class="ranking-container" id="rankingContainer" style="opacity: 0; transition: opacity 0.5s;">
             <div id="rankingPanel" class="bg-black/75 rounded-xl p-3 w-max pointer-events-auto backdrop-blur-sm">
                 <h3 class="text-base font-bold text-green-400 mb-2 text-center">실시간 순위</h3>
@@ -375,7 +449,6 @@
     </div>
 
     <div id="resultScreen" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4">
-        <!-- resultContainer ID 추가 및 고정 너비 클래스 제거 -->
         <div id="resultContainer" class="bg-gray-800 rounded-3xl p-8 w-full">
             <h2 class="title-font text-4xl text-center text-white mb-6">경기 결과</h2>
             <div id="resultList" class="grid gap-4 mb-6"></div>
@@ -409,6 +482,9 @@
         let imagesToLoad = members.length;
         let allImagesLoaded = false;
         let sprintEnabled = true;
+        let bgm = null;
+        let isMuted = false;
+        let currentVolume = 0.7;
         
         const preloadedTextures = {};
 
@@ -419,6 +495,63 @@
                 toggle.classList.add('active');
             } else {
                 toggle.classList.remove('active');
+            }
+        }
+
+        // Volume control functions
+        function toggleMute() {
+            isMuted = !isMuted;
+            const muteBtn = document.getElementById('muteBtn');
+            const volumeSlider = document.getElementById('volumeSlider');
+            if (isMuted) {
+                muteBtn.textContent = '🔇';
+                if (bgm) bgm.volume = 0;
+            } else {
+                updateMuteIcon(currentVolume);
+                if (bgm) bgm.volume = currentVolume;
+            }
+        }
+
+        function changeVolume(val) {
+            currentVolume = val / 100;
+            if (bgm) {
+                bgm.volume = isMuted ? 0 : currentVolume;
+            }
+            if (!isMuted) {
+                updateMuteIcon(currentVolume);
+            }
+            // If user moves slider while muted, unmute
+            if (isMuted && currentVolume > 0) {
+                isMuted = false;
+                if (bgm) bgm.volume = currentVolume;
+                updateMuteIcon(currentVolume);
+            }
+        }
+
+        function updateMuteIcon(vol) {
+            const muteBtn = document.getElementById('muteBtn');
+            if (vol <= 0) {
+                muteBtn.textContent = '🔇';
+            } else if (vol < 0.35) {
+                muteBtn.textContent = '🔈';
+            } else if (vol < 0.7) {
+                muteBtn.textContent = '🔉';
+            } else {
+                muteBtn.textContent = '🔊';
+            }
+        }
+
+        function stopBGM() {
+            if (bgm) {
+                const fadeInterval = setInterval(() => {
+                    if (bgm.volume > 0.05) {
+                        bgm.volume = Math.max(0, bgm.volume - 0.05);
+                    } else {
+                        bgm.pause();
+                        bgm.volume = currentVolume;
+                        clearInterval(fadeInterval);
+                    }
+                }, 70);
             }
         }
 
@@ -566,6 +699,7 @@
         });
 
         document.getElementById('replayBtn').addEventListener('click', () => {
+            stopBGM();
             document.getElementById('resultScreen').classList.add('hidden');
             document.getElementById('menuScreen').classList.remove('hidden');
         });
@@ -675,6 +809,19 @@
             document.getElementById('sprintWindEffect').classList.add('hidden');
             document.getElementById('closeupOverlay').classList.add('hidden');
 
+            // Reset volume slider to current state
+            document.getElementById('volumeSlider').value = currentVolume * 100;
+            updateMuteIcon(isMuted ? 0 : currentVolume);
+
+            // BGM 시작
+            if (bgm) {
+                bgm.pause();
+                bgm.currentTime = 0;
+            }
+            bgm = new Audio('https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/chuntaverse.mp3');
+            bgm.volume = isMuted ? 0 : currentVolume;
+            bgm.play().catch(function(e) { console.log('Audio play failed:', e); });
+
             if (scene) {
                 scene.traverse((object) => {
                     if (object.geometry) object.geometry.dispose();
@@ -729,7 +876,7 @@
                 const endLookAt = new THREE.Vector3(endX, 2, 0);
                 
                 const startLookAt = camera.lookAtVector.clone();
-                const duration = 5000;
+                const duration = 5500;
                 const animStartTime = performance.now();
 
                 function animateSweep() {
@@ -751,12 +898,12 @@
                     } else {
                         setTimeout(() => {
                             showFullStartingLine(trackWidth, laneWidth, laneCount);
-                        }, 300);
+                        }, 500);
                     }
                 }
                 
                 animateSweep();
-            }, 300);
+            }, 500);
         }
 
         function showFullStartingLine(trackWidth, laneWidth, laneCount) {
@@ -766,7 +913,7 @@
             const endPos = new THREE.Vector3(0, 18, -40);
             const endLookAt = new THREE.Vector3(0, 2, 0);
             
-            const duration = 3333;
+            const duration = 3500;
             const animStartTime = performance.now();
             
             function animateToFullView() {
@@ -793,47 +940,47 @@
         }
 
         function startCountdown() {
-            const countdownTexts = ['제자리에', '준비', '출발!'];
-            let countdownIndex = 0;
             const countdownAlert = document.getElementById('countdownAlert');
             const countdownDiv = countdownAlert.querySelector('div');
             
-            function showNextCountdown() {
-                if (countdownIndex < countdownTexts.length) {
-                    countdownAlert.classList.remove('hidden');
-                    
-                    countdownDiv.classList.remove('countdown-text');
-                    void countdownDiv.offsetWidth;
-                    countdownDiv.classList.add('countdown-text');
-                    
-                    if (countdownIndex === 2) {
-                        countdownDiv.textContent = countdownTexts[countdownIndex];
-                        countdownDiv.style.color = '#22c55e';
-                        countdownDiv.style.textShadow = '0 0 20px rgba(34, 197, 94, 0.8)';
-                    } else {
-                        countdownDiv.textContent = countdownTexts[countdownIndex];
-                        countdownDiv.style.color = '#ffffff';
-                        countdownDiv.style.textShadow = 'none';
-                    }
-                    
-                    countdownIndex++;
-                    
-                    const delay = countdownIndex === 3 ? 800 : 1200;
-                    setTimeout(showNextCountdown, delay);
-                } else {
-                    countdownAlert.classList.add('hidden');
-                    startingSequence = false;
-                    raceStarted = true;
-                    startTime = 0;
-                    
-                    document.getElementById('rankingContainer').style.opacity = '1';
-                    
-                    lastTime = 0;
-                    animate();
-                }
-            }
-            
-            showNextCountdown();
+            countdownAlert.classList.remove('hidden');
+            countdownDiv.classList.remove('countdown-text');
+            void countdownDiv.offsetWidth;
+            countdownDiv.classList.add('countdown-text');
+            countdownDiv.textContent = '제자리에';
+            countdownDiv.style.color = '#ffffff';
+            countdownDiv.style.textShadow = 'none';
+
+            setTimeout(() => {
+                countdownDiv.classList.remove('countdown-text');
+                void countdownDiv.offsetWidth;
+                countdownDiv.classList.add('countdown-text');
+                countdownDiv.textContent = '준비';
+                countdownDiv.style.color = '#ffffff';
+                countdownDiv.style.textShadow = 'none';
+            }, 1000);
+
+            setTimeout(() => {
+                countdownDiv.classList.remove('countdown-text');
+                void countdownDiv.offsetWidth;
+                countdownDiv.classList.add('countdown-text');
+                countdownDiv.textContent = '출발!';
+                countdownDiv.style.color = '#22c55e';
+                countdownDiv.style.textShadow = '0 0 20px rgba(34, 197, 94, 0.8)';
+                
+                startingSequence = false;
+                raceStarted = true;
+                startTime = 0;
+                
+                document.getElementById('rankingContainer').style.opacity = '1';
+                
+                lastTime = 0;
+                animate();
+            }, 3000);
+
+            setTimeout(() => {
+                countdownAlert.classList.add('hidden');
+            }, 3500);
         }
 
         function initThreeJS() {
@@ -891,13 +1038,6 @@
             track.position.set(0, -0.1, totalTrackLength / 2 - 100);
             track.receiveShadow = true;
             scene.add(track);
-
-            const innerBorderGeom = new THREE.PlaneGeometry(0.5, totalTrackLength);
-            const innerBorderMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const innerBorder = new THREE.Mesh(innerBorderGeom, innerBorderMat);
-            innerBorder.rotation.x = -Math.PI / 2;
-            innerBorder.position.set(-trackWidth / 2 - 2.5, 0.02, totalTrackLength / 2 - 100);
-            scene.add(innerBorder);
 
             const lineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
             for (let i = 0; i <= laneCount; i++) {
@@ -1064,6 +1204,8 @@
                 bodyGroup.castShadow = true;
                 scene.add(bodyGroup);
 
+                const individualSpeed = 12.0 + Math.random() * 2.5;
+
                 runners.push({
                     member,
                     mesh: bodyGroup,
@@ -1076,8 +1218,8 @@
                     lane: index,
                     laneX,
                     position: 0,
-                    speed: 15.0 + Math.random() * 2.0,
-                    baseSpeed: 15.0,
+                    speed: individualSpeed,
+                    baseSpeed: individualSpeed,
                     slowdownTimer: 0,
                     speedBoostTimer: 0,
                     animPhase: Math.random() * Math.PI * 2,
@@ -1311,7 +1453,7 @@
                 sprintRunners.forEach(runner => {
                     runner.isSprinting = false;
                     runner.ultimateActive = false;
-                    runner.speed = runner.baseSpeed + Math.random() * 2.0;
+                    runner.speed = runner.baseSpeed;
                     
                     removeSprintVisualEffects(runner);
                 });
@@ -1566,7 +1708,7 @@
                 if (runner.slowdownTimer > 0) {
                     runner.slowdownTimer -= effectiveDelta * 60;
                     if (runner.slowdownTimer <= 0) {
-                        runner.speed = runner.baseSpeed + Math.random() * 2.0;
+                        runner.speed = runner.baseSpeed;
                         if (runner.isSprinting) {
                             runner.speed = runner.sprintSpeed;
                         }
@@ -1576,7 +1718,7 @@
                 if (runner.speedBoostTimer > 0) {
                     runner.speedBoostTimer -= effectiveDelta * 60;
                     if (runner.speedBoostTimer <= 0) {
-                        runner.speed = runner.baseSpeed + Math.random() * 2.0;
+                        runner.speed = runner.baseSpeed;
                         if (runner.isSprinting) {
                             runner.speed = runner.sprintSpeed;
                         }
@@ -1861,11 +2003,6 @@
         }
 
         function createGapVisuals(runnerA, runnerB) {
-            // runnerA = last passing runner (further ahead, higher Z)
-            // runnerB = first failing runner (behind, lower Z)
-            // Torso: BoxGeometry(2.2, 2.2, 1.4) at y=1.8
-            // Front of runner (in running direction +Z) = position + 0.7 (half of torso depth 1.4)
-            // Top of runner = 1.8 + 1.1 = 2.9 (torso center y + half torso height)
             const frontOffset = 0.7;
             const topY = 2.9;
 
@@ -1876,7 +2013,6 @@
             const lineMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.7 });
             const lineMatBright = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.9 });
 
-            // 1. Horizontal red line at the last passing runner's front-top Z position
             const horizontalLength = Math.abs(runnerA.laneX - runnerB.laneX);
             const midX = (runnerA.laneX + runnerB.laneX) / 2;
 
@@ -1888,7 +2024,6 @@
                 scene.add(hLine);
             }
 
-            // 2. Vertical distance line (along Z axis) from the horizontal line down to the failing runner's front
             if (distance > 0.01) {
                 const vLineGeom = new THREE.CylinderGeometry(0.08, 0.08, distance, 8);
                 const vLine = new THREE.Mesh(vLineGeom, lineMatBright);
@@ -1897,7 +2032,6 @@
                 scene.add(vLine);
             }
 
-            // End cap markers
             const endCapGeom = new THREE.BoxGeometry(3.0, 0.15, 0.15);
 
             const capTop = new THREE.Mesh(endCapGeom, lineMatBright);
@@ -1908,7 +2042,6 @@
             capBottom.position.set(runnerB.laneX, topY, failZ);
             scene.add(capBottom);
 
-            // Show the gap alert UI
             const gapAlert = document.getElementById('gapAlert');
             const gapDiv = gapAlert.querySelector('div');
             const distanceText = distance.toFixed(2);
@@ -1962,6 +2095,8 @@
                 gameEndScheduled = true;
                 raceEnded = true;
                 
+                stopBGM();
+
                 document.getElementById('closeupOverlay').classList.add('hidden');
                 document.getElementById('sprintScreenEffect').classList.add('hidden');
                 document.getElementById('sprintSpeedLines').classList.add('hidden');
@@ -1983,32 +2118,26 @@
 
             const count = runners.length;
             
-            // 기본 설정 (6, 11, 12명 등)
             let gridCols = 'grid-cols-3 md:grid-cols-6';
             let containerMaxW = 'max-w-7xl';
 
             if (count >= 2 && count <= 5) {
-                // 1. 2~5명일 때: 인원수에 맞게 폭 조절 (1줄)
                 gridCols = `grid-cols-2 md:grid-cols-${count}`;
                 
-                // 컨테이너 폭 조절
                 if (count === 2) containerMaxW = 'max-w-2xl';
                 else if (count === 3) containerMaxW = 'max-w-4xl';
                 else if (count === 4) containerMaxW = 'max-w-5xl';
                 else if (count === 5) containerMaxW = 'max-w-6xl';
                 
             } else if (count >= 7 && count <= 8) {
-                // 2. 7~8명일 때: 2행 4열
                 gridCols = 'grid-cols-2 md:grid-cols-4';
                 containerMaxW = 'max-w-5xl';
                 
             } else if (count >= 9 && count <= 10) {
-                // 3. 9~10명일 때: 2행 5열
                 gridCols = 'grid-cols-2 md:grid-cols-5';
                 containerMaxW = 'max-w-6xl';
             }
 
-            // 클래스 적용
             resultList.className = `grid gap-4 mb-6 ${gridCols}`;
             resultContainer.className = `bg-gray-800 rounded-3xl p-8 w-full ${containerMaxW} transition-all duration-300`;
 
@@ -2150,5 +2279,4 @@
         preloadImages();
     </script>
 </body>
-
 </html>
