@@ -1218,7 +1218,7 @@
                 runner.speed = runner.baseSpeed * 0.3;
                 electrocutedRunners.add(runner.member.id);
 
-                createLightningEffect(runner);
+                createLightningEffectFlipped(runner);
             });
 
             setTimeout(() => {
@@ -1227,7 +1227,7 @@
             }, 2000);
         }
 
-        function createLightningEffect(runner) {
+        function createLightningEffectFlipped(runner) {
             const lightningGroup = new THREE.Group();
             
             const boltSegments = 8;
@@ -1237,7 +1237,7 @@
             let currentZ = 0;
             
             for (let i = 0; i <= boltSegments; i++) {
-                const y = boltHeight - (i / boltSegments) * boltHeight;
+                const y = (i / boltSegments) * boltHeight;  
                 if (i > 0 && i < boltSegments) {
                     currentX += (Math.random() - 0.5) * 1.5;
                     currentZ += (Math.random() - 0.5) * 1.5;
@@ -1272,10 +1272,11 @@
                 
                 let bx = startPoint.x;
                 let bz = startPoint.z;
+
                 for (let j = 1; j <= 3; j++) {
                     bx += (Math.random() - 0.5) * 2;
                     bz += (Math.random() - 0.5) * 2;
-                    const by = startPoint.y - j * 0.8;
+                    const by = startPoint.y + j * 0.8; 
                     branchPoints.push(new THREE.Vector3(bx, by, bz));
                 }
                 
@@ -1290,23 +1291,6 @@
                     const branch = new THREE.Mesh(branchGeom, branchMat);
                     lightningGroup.add(branch);
                 }
-            }
-            
-            const sparkGeom = new THREE.SphereGeometry(0.3, 8, 8);
-            const sparkMat = new THREE.MeshBasicMaterial({ 
-                color: 0xffffff, 
-                transparent: true, 
-                opacity: 0.8 
-            });
-            for (let i = 0; i < 5; i++) {
-                const spark = new THREE.Mesh(sparkGeom, sparkMat.clone());
-                spark.position.set(
-                    (Math.random() - 0.5) * 2,
-                    0.5 + Math.random(),
-                    (Math.random() - 0.5) * 2
-                );
-                spark.scale.setScalar(0.3 + Math.random() * 0.5);
-                lightningGroup.add(spark);
             }
             
             lightningGroup.position.y = 2;
@@ -1561,15 +1545,20 @@
                     obstacles.forEach(obs => {
                         const distanceToObs = obs.zPos - runner.position;
                         if (obs.lane === runner.lane && Math.abs(distanceToObs) < 2.5) {
+                            /* BUG FIX: Check shieldProcessedObs FIRST before any obstacle logic.
+                               If this obstacle was already processed by the shield, skip it entirely
+                               so it cannot affect the runner even after the shield is gone. */
+                            if (runner.shieldProcessedObs.has(obs.obsId)) {
+                                return;
+                            }
+
                             if (obs.type === 'hurdle' && !runner.isJumping && runner.slowdownTimer <= 0) {
                                 if (distanceToObs > 0 && distanceToObs < 2) {
                                     if (runner.hasShield && runner.shieldCharges > 0) {
-                                        if (!runner.shieldProcessedObs.has(obs.obsId)) {
-                                            runner.shieldProcessedObs.add(obs.obsId);
-                                            runner.shieldCharges--;
-                                            runner.hurdleFailCount = 0;
-                                        }
-                                    } else if (!runner.hasShield) {
+                                        runner.shieldProcessedObs.add(obs.obsId);
+                                        runner.shieldCharges--;
+                                        runner.hurdleFailCount = 0;
+                                    } else {
                                         runner.isJumping = true; runner.jumpPhase = 0;
                                         const baseSuccessRate = 0.5; const bonusFromFails = runner.hurdleFailCount * 0.15;
                                         const successRate = Math.min(0.95, baseSuccessRate + bonusFromFails);
@@ -1580,11 +1569,9 @@
                             } else if (obs.type === 'gravel' && runner.slowdownTimer <= 0 && !runner.isJumping) {
                                 if (Math.abs(distanceToObs) < 2) {
                                     if (runner.hasShield && runner.shieldCharges > 0) {
-                                        if (!runner.shieldProcessedObs.has(obs.obsId)) {
-                                            runner.shieldProcessedObs.add(obs.obsId);
-                                            runner.shieldCharges--;
-                                        }
-                                    } else if (!runner.hasShield) {
+                                        runner.shieldProcessedObs.add(obs.obsId);
+                                        runner.shieldCharges--;
+                                    } else {
                                         runner.slowdownTimer = 25; runner.speed *= 0.8; runner.tiltPhase = 0; 
                                     }
                                 }
