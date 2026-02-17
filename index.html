@@ -1545,9 +1545,6 @@
                     obstacles.forEach(obs => {
                         const distanceToObs = obs.zPos - runner.position;
                         if (obs.lane === runner.lane && Math.abs(distanceToObs) < 2.5) {
-                            /* BUG FIX: Check shieldProcessedObs FIRST before any obstacle logic.
-                               If this obstacle was already processed by the shield, skip it entirely
-                               so it cannot affect the runner even after the shield is gone. */
                             if (runner.shieldProcessedObs.has(obs.obsId)) {
                                 return;
                             }
@@ -1618,7 +1615,7 @@
             });
         }
 
-        function updateCamera() {
+        function updateCamera(delta) {
             if (startingSequence) return;
             if (isPaused && !midBossActive) return;
             if (midBossActive) {
@@ -1634,8 +1631,8 @@
                 if (!slowMotion) { slowMotion = true; slowMotionFactor = 0.7; currentCameraMode = 'finish'; }
             }
             if (!gapMode && currentCameraMode !== 'finish') {
-                cameraChangeTimer += 1 / 60;
-                if (cameraChangeTimer > 20 && !slowMotion) {
+                cameraChangeTimer += delta;
+                if (cameraChangeTimer > 4 && !slowMotion) {
                     cameraChangeTimer = 0;
                     const allModes = ['overview', 'side', 'front'];
                     const availableModes = allModes.filter(mode => mode !== currentCameraMode);
@@ -1919,7 +1916,7 @@
             
             checkMidBossEvent();
             
-            updateRunners(delta); updateCamera(); updateRankingPanel(); updateNameSubtitles();
+            updateRunners(delta); updateCamera(delta); updateRankingPanel(); updateNameSubtitles();
             const gravelTime = gameTime * 2;
             obstacles.forEach(obs => { if (obs.type === 'gravel') obs.mesh.rotation.z = Math.sin(gravelTime) * 0.05; });
             checkGameEnd(); renderer.render(scene, camera); requestAnimationFrame(animate);
