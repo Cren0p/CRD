@@ -1635,7 +1635,7 @@
             }
             if (!gapMode && currentCameraMode !== 'finish') {
                 cameraChangeTimer += 1 / 60;
-                if (cameraChangeTimer > 4 && !slowMotion) {
+                if (cameraChangeTimer > 20 && !slowMotion) {
                     cameraChangeTimer = 0;
                     const allModes = ['overview', 'side', 'front'];
                     const availableModes = allModes.filter(mode => mode !== currentCameraMode);
