@@ -7,405 +7,243 @@
     <link rel="icon" href="https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CRD.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
-        .title-font { font-family: 'Nanum Gothic', sans-serif; font-weight: 800; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .title-font { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: 800; }
+        * { border-radius: 0 !important; }
+
         .member-card { transition: all 0.3s ease; }
         .member-card.selected { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.5); }
         .member-card:hover { transform: scale(1.02); }
+        .member-card img { transition: filter 0.3s ease; }
+        .member-card:not(.selected) img { filter: grayscale(100%); opacity: 0.7; }
+        .member-card.selected img { filter: grayscale(0%); opacity: 1; }
+
         #gameCanvas { width: 100%; height: 100%; display: block; }
         .speed-lines {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            background: repeating-linear-gradient(
-                90deg,
-                transparent,
-                transparent 50px,
-                rgba(255,255,255,0.1) 50px,
-                rgba(255,255,255,0.1) 51px
-            );
+            position: absolute; width: 100%; height: 100%; pointer-events: none;
+            background: repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(255,255,255,0.1) 50px, rgba(255,255,255,0.1) 51px);
             animation: speedMove 0.05s linear infinite;
         }
-        @keyframes speedMove {
-            from { transform: translateX(0); }
-            to { transform: translateX(-51px); }
-        }
+        @keyframes speedMove { from { transform: translateX(0); } to { transform: translateX(-51px); } }
         .ranking-item { transition: all 0.3s ease; }
         .ranking-item-confirmed {
             animation: confirmPulse 1s ease infinite, confirmGlow 0.5s ease-out;
             background: linear-gradient(135deg, rgba(34, 197, 94,0.3) 0%, rgba(34, 197, 94,0.1) 100%);
-            border: 2px solid #22c55e;
-            transform: scale(1.12);
+            border: 2px solid #22c55e; transform: scale(1.12);
         }
-        @keyframes confirmPulse {
-            0%, 100% { transform: scale(1.12); }
-            50% { transform: scale(1.18); }
-        }
+        @keyframes confirmPulse { 0%, 100% { transform: scale(1.12); } 50% { transform: scale(1.18); } }
         @keyframes confirmGlow {
             0% { box-shadow: 0 0 0 rgba(34,197,94,0); }
             50% { box-shadow: 0 0 30px rgba(34,197,94,0.8), 0 0 60px rgba(34,197,94,0.4); }
             100% { box-shadow: 0 0 20px rgba(34,197,94,0.6), 0 0 40px rgba(34,197,94,0.3); }
         }
-        .crown-icon {
-            display: inline-block;
-            filter: drop-shadow(0 0 8px #22c55e);
-        }
-        .ranking-item-confirmed .crown-icon {
-            animation: crownBounce 0.6s ease infinite;
-        }
-        @keyframes crownBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-4px); }
-        }
-        input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
-        #eventAlert div, #ultimateAlert div, #countdownAlert div, #gapAlert div {
-            background: rgba(0, 0, 0, 0.85);
-            border-radius: 16px;
-            padding: 20px 32px;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 60px;
+        #eventAlert div, #ultimateAlert div, #countdownAlert div {
+            background: rgba(0, 0, 0, 0.85); padding: 20px 32px; backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; min-height: 60px;
         }
-        #ultimateAlert div {
-            text-shadow: none !important;
+        #ultimateAlert div { text-shadow: none !important; width: 100%; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); }
+        #gapAlert div {
+            background: rgba(0, 0, 0, 0.85); padding: 20px 32px; backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center; min-height: 60px;
+            width: 100%; box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
         }
-        #eventAlert {
-            background: transparent;
-        }
-        #eventAlert div {
-            background: rgba(0, 0, 0, 0.85);
-            border-radius: 12px;
-            padding: 12px 24px;
-            min-height: 48px;
-            font-size: 1.5rem;
-        }
+        #eventAlert { background: transparent; }
+        #eventAlert div { background: rgba(0, 0, 0, 0.85); padding: 12px 24px; min-height: 48px; font-size: 1.5rem; }
         .ranking-container {
-            position: absolute;
-            top: 50%;
-            left: 16px;
-            transform: translateY(-50%) scale(1.3);
-            transform-origin: left center;
+            position: absolute; top: 50%; left: 16px; transform: translateY(-50%) scale(1.3); transform-origin: left center;
         }
-        #ultimateAlert {
-            top: 8%;
-        }
-        #countdownAlert {
-            top: 8%;
-        }
-        #eventAlert {
-            top: 8%;
-            left: 50%;
-            transform: translate(-50%, 0);
-        }
-        #gapAlert {
-            top: 8%;
-            left: 50%;
-            transform: translate(-50%, 0);
-        }
-        #memberGrid .member-card img {
-            object-position: bottom;
-        }
-        .countdown-text {
-            animation: countdownPulse 0.5s ease-out;
-        }
-        @keyframes countdownPulse {
-            0% { transform: scale(0.5); opacity: 0; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .sprint-effect {
-            animation: sprintGlow 0.3s ease-in-out infinite alternate;
-        }
+        #ultimateAlert { bottom: 0; top: auto; left: 0; right: 0; width: 100%; }
+        #countdownAlert { top: 8%; }
+        #eventAlert { top: 8%; left: 50%; transform: translate(-50%, 0); }
+        #gapAlert { bottom: 0; top: auto; left: 0; right: 0; width: 100%; }
+        #memberGrid .member-card img { object-position: bottom; }
+        .countdown-text { animation: countdownPulse 0.5s ease-out; }
+        @keyframes countdownPulse { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .sprint-effect { animation: sprintGlow 0.3s ease-in-out infinite alternate; }
         @keyframes sprintGlow {
             0% { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
             100% { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor, 0 0 60px currentColor; }
         }
         .sprint-screen-effect {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 5;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;
             background: radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 60%);
         }
         .sprint-speed-lines {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 4;
-            overflow: hidden;
+            position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 4; overflow: hidden;
         }
-        .sprint-speed-lines::before,
-        .sprint-speed-lines::after {
-            content: '';
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            top: -50%;
-            left: -50%;
-            background: repeating-linear-gradient(
-                90deg,
-                transparent,
-                transparent 40px,
-                rgba(255,255,255,0.15) 40px,
-                rgba(255,255,255,0.15) 42px
-            );
+        .sprint-speed-lines::before, .sprint-speed-lines::after {
+            content: ''; position: absolute; width: 200%; height: 200%; top: -50%; left: -50%;
+            background: repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.15) 40px, rgba(255,255,255,0.15) 42px);
             animation: sprintLines 0.015s linear infinite;
         }
         .sprint-speed-lines::after {
-            background: repeating-linear-gradient(
-                85deg,
-                transparent,
-                transparent 60px,
-                rgba(255,255,255,0.08) 60px,
-                rgba(255,255,255,0.08) 63px
-            );
+            background: repeating-linear-gradient(85deg, transparent, transparent 60px, rgba(255,255,255,0.08) 60px, rgba(255,255,255,0.08) 63px);
             animation-duration: 0.02s;
         }
-        @keyframes sprintLines {
-            from { transform: translateX(0); }
-            to { transform: translateX(-42px); }
-        }
+        @keyframes sprintLines { from { transform: translateX(0); } to { transform: translateX(-42px); } }
         .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8);
+            display: flex; align-items: center; justify-content: center; z-index: 9999;
         }
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255,255,255,0.3);
-            border-top-color: #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .sprint-wind-effect {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 6;
-            overflow: hidden;
-        }
-        .wind-line {
-            position: absolute;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-            animation: windMove 0.3s linear infinite;
-        }
-        @keyframes windMove {
-            0% { transform: translateX(100vw); }
-            100% { transform: translateX(-100vw); }
-        }
-        .toggle-switch {
-            position: relative;
-            width: 56px;
-            height: 28px;
-            background: #4b5563;
-            border-radius: 14px;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-        .toggle-switch.active {
-            background: #3b82f6;
-        }
-        .toggle-switch .toggle-knob {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 24px;
-            height: 24px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.3s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-        .toggle-switch.active .toggle-knob {
-            transform: translateX(28px);
-        }
-        .divider-line {
-            width: 1px;
-            height: 48px;
-            background: #4b5563;
-        }
-        .closeup-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 10;
-            background: linear-gradient(to bottom, 
-                rgba(0,0,0,0.3) 0%, 
-                transparent 15%, 
-                transparent 85%, 
-                rgba(0,0,0,0.3) 100%);
-        }
-        .closeup-text {
-            position: absolute;
-            top: 15%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #fbbf24;
-            animation: pulseText 0.5s ease-in-out infinite alternate;
-        }
-        @keyframes pulseText {
-            0% { transform: translateX(-50%) scale(1); }
-            100% { transform: translateX(-50%) scale(1.05); }
-        }
-
-        /* Volume Control Styles */
+        .loading-spinner { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #3b82f6; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .sprint-wind-effect { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 6; overflow: hidden; }
+        .wind-line { position: absolute; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: windMove 0.3s linear infinite; }
+        @keyframes windMove { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100vw); } }
+        .toggle-switch { position: relative; width: 56px; height: 28px; background: #4b5563; cursor: pointer; transition: background 0.3s ease; }
+        .toggle-switch.active { background: #3b82f6; }
+        .toggle-switch .toggle-knob { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; background: white; transition: transform 0.3s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .toggle-switch.active .toggle-knob { transform: translateX(28px); }
+        .divider-line { width: 1px; height: 48px; background: #4b5563; }
         #volumeControl {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
-            border-radius: 12px;
-            padding: 8px 14px;
-            pointer-events: auto;
+            position: absolute; top: 16px; right: 16px; z-index: 100; display: flex; align-items: center; gap: 8px;
+            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); padding: 8px 14px; pointer-events: auto;
         }
         #volumeControl button {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.4rem;
-            cursor: pointer;
-            padding: 2px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            transition: background 0.2s;
+            background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; padding: 2px;
+            display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; transition: background 0.2s;
         }
-        #volumeControl button:hover {
-            background: rgba(255,255,255,0.15);
+        #volumeControl button:hover { background: rgba(255,255,255,0.15); }
+        #volumeSlider { -webkit-appearance: none; appearance: none; width: 100px; height: 6px; background: rgba(255,255,255,0.25); outline: none; cursor: pointer; }
+        #volumeSlider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #3b82f6; cursor: pointer; box-shadow: 0 0 4px rgba(59,130,246,0.5); transition: transform 0.15s; }
+        #volumeSlider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        #volumeSlider::-moz-range-thumb { width: 16px; height: 16px; background: #3b82f6; cursor: pointer; border: none; box-shadow: 0 0 4px rgba(59,130,246,0.5); }
+
+        .sprint-split-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; overflow: hidden; }
+        .split-left, .split-right { position: absolute; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); transition: transform 0.5s ease; }
+        .split-left { clip-path: polygon(0 0, 100% 0, 50% 100%, 0% 100%); transform: translateX(-100%); }
+        .split-right { clip-path: polygon(50% 0, 100% 0, 100% 100%, 0% 100%); transform: translateX(100%); }
+        .sprint-split-overlay.active .split-left { animation: splitLeft 1.5s ease forwards; }
+        .sprint-split-overlay.active .split-right { animation: splitRight 1.5s ease forwards; }
+        @keyframes splitLeft { 0% { transform: translateX(-100%); } 30% { transform: translateX(0); } 70% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        @keyframes splitRight { 0% { transform: translateX(100%); } 30% { transform: translateX(0); } 70% { transform: translateX(0); } 100% { transform: translateX(100%); } }
+        .sprint-character-display {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 51; pointer-events: none; opacity: 0; text-align: center;
         }
-        #volumeSlider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 100px;
-            height: 6px;
-            background: rgba(255,255,255,0.25);
-            border-radius: 3px;
-            outline: none;
-            cursor: pointer;
+        .sprint-character-display.active { animation: characterShow 1.5s ease forwards; }
+        @keyframes characterShow {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            30% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
         }
-        #volumeSlider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            background: #3b82f6;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 4px rgba(59,130,246,0.5);
-            transition: transform 0.15s;
+        .sprint-character-image {
+            max-width: 300px; max-height: 400px; margin-bottom: 20px;
         }
-        #volumeSlider::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
+        .sprint-character-text {
+            font-size: 3rem; font-weight: bold; color: #fbbf24;
         }
-        #volumeSlider::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
-            background: #3b82f6;
-            border-radius: 50%;
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 0 4px rgba(59,130,246,0.5);
+
+        .midboss-split-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; overflow: hidden; }
+        .midboss-split-left, .midboss-split-right { position: absolute; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); }
+        .midboss-split-left { clip-path: polygon(0 0, 100% 0, 50% 100%, 0% 100%); transform: translateX(-100%); }
+        .midboss-split-right { clip-path: polygon(50% 0, 100% 0, 100% 100%, 0% 100%); transform: translateX(100%); }
+        .midboss-split-overlay.active .midboss-split-left { animation: midbossSplitLeft 2s ease forwards; }
+        .midboss-split-overlay.active .midboss-split-right { animation: midbossSplitRight 2s ease forwards; }
+        @keyframes midbossSplitLeft { 0% { transform: translateX(-100%); } 20% { transform: translateX(0); } 80% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        @keyframes midbossSplitRight { 0% { transform: translateX(100%); } 20% { transform: translateX(0); } 80% { transform: translateX(0); } 100% { transform: translateX(100%); } }
+        .midboss-character-display {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 61; pointer-events: none; opacity: 0; text-align: center;
+        }
+        .midboss-character-display.active { animation: midbossCharacterShow 2s ease forwards; }
+        @keyframes midbossCharacterShow {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            25% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+        .midboss-character-image {
+            max-width: 350px; max-height: 450px; margin-bottom: 20px;
+        }
+        .midboss-character-text {
+            font-size: 3.5rem; font-weight: bold;
+        }
+        #midbossAlert {
+            position: absolute; bottom: 0; left: 0; right: 0; width: 100%; z-index: 62;
+        }
+        #midbossAlert div {
+            background: rgba(0, 0, 0, 0.9); padding: 20px 32px; backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center; min-height: 70px;
+            width: 100%; box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+        }
+        .midboss-subtitle {
+            font-size: 2rem; font-weight: bold; color: #fbbf24;
+        }
+
+        .lightning-flash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 55;
+            background: rgba(255, 255, 0, 0.3);
+            animation: lightningFlash 0.1s ease-out;
+        }
+        @keyframes lightningFlash {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .electrocuted {
+            animation: electrocute 0.1s ease-in-out infinite;
+        }
+        @keyframes electrocute {
+            0%, 100% { filter: brightness(1) saturate(1); }
+            50% { filter: brightness(2) saturate(0.5) hue-rotate(60deg); }
         }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
 
+    <div id="root" style="display:none"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="text-center">
             <div class="loading-spinner mx-auto mb-4"></div>
-            <p class="text-white text-xl">이미지 로딩 중... <span id="loadingProgress">0/12</span></p>
+            <p class="text-white text-xl">이미지 로딩 중... <span id="loadingProgress">0/15</span></p>
         </div>
     </div>
 
     <div id="menuScreen" class="min-h-screen p-4">
         <div class="max-w-6xl mx-auto">
-            <h1 class="title-font text-5xl py-6 text-white text-center mb-6">
-                천타버스 랜덤 달리기
-            </h1>
             <div class="flex justify-center mb-6">
-                <div class="bg-gray-800 rounded-2xl p-6 flex items-center gap-6">
+                <img src="https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CRD.webp" alt="천타버스 랜덤 달리기" class="h-36 object-contain">
+            </div>
+            
+            <div class="flex justify-center mb-6">
+                <div class="bg-gray-800 p-6 flex items-center gap-6">
                     <div class="flex items-center gap-4">
                         <span class="text-xl">상위</span>
                         <div id="passCountWrapper" class="relative">
                             <input type="number" id="passCount" value="3" min="1" max="12"
-                                class="w-24 h-16 text-3xl text-center bg-gray-700 rounded-lg border-2 border-blue-500 focus:outline-none focus:border-blue-400">
+                                class="w-24 h-16 text-3xl text-center bg-gray-700 border-2 border-blue-500 focus:outline-none focus:border-blue-400">
                             <div class="text-xs text-gray-400 text-center mt-1">마우스 휠로 조절</div>
                         </div>
                         <span class="text-xl">명 합격</span>
                     </div>
-
                     <div class="divider-line"></div>
-
                     <div class="flex items-center gap-3">
-                        <span class="text-base whitespace-nowrap">막판 스퍼트</span>
+                        <span class="text-xl whitespace-nowrap">막판 스퍼트</span>
                         <div id="sprintToggle" class="toggle-switch active" onclick="toggleSprint()">
                             <div class="toggle-knob"></div>
                         </div>
                     </div>
-
                     <div class="divider-line"></div>
-
-                    <button id="startBtn" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-xl px-8 py-4 rounded-2xl transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 w-52" disabled>
+                    <button id="startBtn" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-xl px-8 py-4 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 w-52" disabled>
                         이미지 로딩 중...
                     </button>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-2xl p-6 mb-6">
+            <div class="bg-gray-800 p-6 mb-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-bold">참가 멤버 선택</h2>
-                    <button id="selectAllBtn" class="bg-white hover:bg-gray-200 text-black font-bold px-6 py-2 rounded-lg transition">
-                        전체 선택
-                    </button>
+                    <div class="flex items-center gap-4">
+                        <h2 class="text-2xl font-bold">참가 멤버 선택</h2>
+                        <p id="selectedCount" class="text-gray-400">선택된 멤버: 0명</p>
+                    </div>
+                    <button id="selectAllBtn" class="bg-white hover:bg-gray-200 text-black font-bold px-6 py-2 transition">전체 선택</button>
                 </div>
                 <div id="memberGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
-            </div>
-            <div class="text-center">
-                <p id="selectedCount" class="text-gray-400">선택된 멤버: 0명</p>
             </div>
         </div>
     </div>
@@ -417,19 +255,35 @@
             <div id="sprintScreenEffect" class="sprint-screen-effect hidden"></div>
             <div id="sprintSpeedLines" class="sprint-speed-lines hidden"></div>
             <div id="sprintWindEffect" class="sprint-wind-effect hidden"></div>
-            <div id="closeupOverlay" class="closeup-overlay hidden">
-                <div class="closeup-text">🔥 막판 접전! 🔥</div>
+            <div id="sprintSplitOverlay" class="sprint-split-overlay">
+                <div class="split-left"></div>
+                <div class="split-right"></div>
             </div>
+            <div id="sprintCharacterDisplay" class="sprint-character-display">
+                <img id="sprintCharacterImage" class="sprint-character-image" src="" alt="스프린트 캐릭터">
+                <div id="sprintCharacterText" class="sprint-character-text"></div>
+            </div>
+            <div id="midbossSplitOverlay" class="midboss-split-overlay">
+                <div class="midboss-split-left"></div>
+                <div class="midboss-split-right"></div>
+            </div>
+            <div id="midbossCharacterDisplay" class="midboss-character-display">
+                <img id="midbossCharacterImage" class="midboss-character-image" src="" alt="중간보스">
+                <div id="midbossCharacterText" class="midboss-character-text"></div>
+            </div>
+            <div id="midbossAlert" class="hidden">
+                <div class="midboss-subtitle"></div>
+            </div>
+            <div id="lightningFlash" class="lightning-flash hidden"></div>
         </div>
 
-        <!-- Volume Control UI -->
         <div id="volumeControl">
             <button id="muteBtn" onclick="toggleMute()" title="음소거">🔊</button>
-            <input type="range" id="volumeSlider" min="0" max="100" value="70" oninput="changeVolume(this.value)">
+            <input type="range" id="volumeSlider" min="0" max="100" value="50" oninput="changeVolume(this.value)">
         </div>
 
         <div class="ranking-container" id="rankingContainer" style="opacity: 0; transition: opacity 0.5s;">
-            <div id="rankingPanel" class="bg-black/75 rounded-xl p-3 w-max pointer-events-auto backdrop-blur-sm">
+            <div id="rankingPanel" class="bg-black/75 p-3 w-max pointer-events-auto backdrop-blur-sm">
                 <h3 class="text-base font-bold text-green-400 mb-2 text-center">실시간 순위</h3>
                 <div id="rankingList" class="space-y-1"></div>
             </div>
@@ -437,25 +291,23 @@
         <div id="countdownAlert" class="absolute left-1/2 transform -translate-x-1/2 hidden z-50">
             <div class="title-font text-6xl text-center text-white countdown-text"></div>
         </div>
-        <div id="ultimateAlert" class="absolute left-1/2 transform -translate-x-1/2 hidden z-50">
-            <div class="title-font text-5xl text-center text-white"></div>
+        <div id="ultimateAlert" class="absolute hidden z-50">
+            <div class="title-font text-5xl text-center text-white w-full"></div>
         </div>
         <div id="eventAlert" class="absolute hidden z-40">
             <div class="title-font text-3xl text-center text-white flex items-center gap-3"></div>
         </div>
         <div id="gapAlert" class="absolute hidden z-50">
-            <div class="title-font text-3xl text-center text-white flex flex-col items-center gap-2"></div>
+            <div class="title-font text-3xl text-center text-white flex items-center justify-center gap-4"></div>
         </div>
     </div>
 
     <div id="resultScreen" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4">
-        <div id="resultContainer" class="bg-gray-800 rounded-3xl p-8 w-full">
+        <div id="resultContainer" class="bg-gray-800 p-8 w-full">
             <h2 class="title-font text-4xl text-center text-white mb-6">경기 결과</h2>
             <div id="resultList" class="grid gap-4 mb-6"></div>
             <div class="text-center">
-                <button id="replayBtn" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-xl px-8 py-3 rounded-xl transition">
-                    다시하기
-                </button>
+                <button id="replayBtn" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-xl px-8 py-3 transition">다시하기</button>
             </div>
         </div>
     </div>
@@ -476,6 +328,27 @@
             { id: 12, name: '파니', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/12.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/12.png', color: '#9FC5E8' }
         ];
 
+        const midBosses = [
+            { 
+                id: 'authority', 
+                name: '수장의 권한', 
+                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CY.webp',
+                color: '#43EAF6'
+            },
+            { 
+                id: 'jongyang', 
+                name: '★ 종 양 등 장 ★', 
+                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/JY.webp',
+                color: '#00FFFF'
+            },
+            { 
+                id: 'thunder', 
+                name: '천기의자', 
+                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/TH.webp',
+                color: '#FFFF00'
+            }
+        ];
+
         let selectedMembers = new Set();
         let passCount = 3;
         let imagesLoaded = 0;
@@ -484,73 +357,50 @@
         let sprintEnabled = true;
         let bgm = null;
         let isMuted = false;
-        let currentVolume = 0.7;
-        
+        let currentVolume = 0.5;
         const preloadedTextures = {};
+        const preloadedBossTextures = {};
+
+        let midBossTriggered = false;
+        let midBossActive = false;
+        let currentMidBoss = null;
+        let midBossMesh = null;
+        let shieldedRunners = new Set();
+        let electrocutedRunners = new Set();
 
         function toggleSprint() {
             sprintEnabled = !sprintEnabled;
             const toggle = document.getElementById('sprintToggle');
-            if (sprintEnabled) {
-                toggle.classList.add('active');
-            } else {
-                toggle.classList.remove('active');
-            }
+            if (sprintEnabled) { toggle.classList.add('active'); } else { toggle.classList.remove('active'); }
         }
 
-        // Volume control functions
         function toggleMute() {
             isMuted = !isMuted;
             const muteBtn = document.getElementById('muteBtn');
-            const volumeSlider = document.getElementById('volumeSlider');
-            if (isMuted) {
-                muteBtn.textContent = '🔇';
-                if (bgm) bgm.volume = 0;
-            } else {
-                updateMuteIcon(currentVolume);
-                if (bgm) bgm.volume = currentVolume;
-            }
+            if (isMuted) { muteBtn.textContent = '🔇'; if (bgm) bgm.volume = 0; }
+            else { updateMuteIcon(currentVolume); if (bgm) bgm.volume = currentVolume; }
         }
 
         function changeVolume(val) {
             currentVolume = val / 100;
-            if (bgm) {
-                bgm.volume = isMuted ? 0 : currentVolume;
-            }
-            if (!isMuted) {
-                updateMuteIcon(currentVolume);
-            }
-            // If user moves slider while muted, unmute
-            if (isMuted && currentVolume > 0) {
-                isMuted = false;
-                if (bgm) bgm.volume = currentVolume;
-                updateMuteIcon(currentVolume);
-            }
+            if (bgm) bgm.volume = isMuted ? 0 : currentVolume;
+            if (!isMuted) updateMuteIcon(currentVolume);
+            if (isMuted && currentVolume > 0) { isMuted = false; if (bgm) bgm.volume = currentVolume; updateMuteIcon(currentVolume); }
         }
 
         function updateMuteIcon(vol) {
             const muteBtn = document.getElementById('muteBtn');
-            if (vol <= 0) {
-                muteBtn.textContent = '🔇';
-            } else if (vol < 0.35) {
-                muteBtn.textContent = '🔈';
-            } else if (vol < 0.7) {
-                muteBtn.textContent = '🔉';
-            } else {
-                muteBtn.textContent = '🔊';
-            }
+            if (vol <= 0) muteBtn.textContent = '🔇';
+            else if (vol < 0.35) muteBtn.textContent = '🔈';
+            else if (vol < 0.7) muteBtn.textContent = '🔉';
+            else muteBtn.textContent = '🔊';
         }
 
         function stopBGM() {
             if (bgm) {
                 const fadeInterval = setInterval(() => {
-                    if (bgm.volume > 0.05) {
-                        bgm.volume = Math.max(0, bgm.volume - 0.05);
-                    } else {
-                        bgm.pause();
-                        bgm.volume = currentVolume;
-                        clearInterval(fadeInterval);
-                    }
+                    if (bgm.volume > 0.05) bgm.volume = Math.max(0, bgm.volume - 0.05);
+                    else { bgm.pause(); bgm.currentTime = 0; clearInterval(fadeInterval); }
                 }, 70);
             }
         }
@@ -558,59 +408,46 @@
         function preloadImages() {
             const loadingOverlay = document.getElementById('loadingOverlay');
             const loadingProgress = document.getElementById('loadingProgress');
-            
             loadingOverlay.classList.remove('hidden');
-            
             let loadedCount = 0;
+            const totalToLoad = members.length + midBosses.length;
             const textureLoader = new THREE.TextureLoader();
             textureLoader.setCrossOrigin('anonymous');
             
             members.forEach(member => {
-                textureLoader.load(
-                    member.img,
-                    (texture) => {
-                        texture.magFilter = THREE.LinearFilter;
-                        texture.minFilter = THREE.LinearFilter;
-                        preloadedTextures[member.id] = texture;
-                        
-                        loadedCount++;
-                        imagesLoaded = loadedCount;
-                        loadingProgress.textContent = `${loadedCount}/${imagesToLoad}`;
-                        
-                        if (loadedCount === imagesToLoad) {
-                            allImagesLoaded = true;
-                            loadingOverlay.classList.add('hidden');
-                            updateStartButton();
-                        }
-                    },
-                    undefined,
-                    () => {
-                        loadedCount++;
-                        imagesLoaded = loadedCount;
-                        loadingProgress.textContent = `${loadedCount}/${imagesToLoad}`;
-                        
-                        if (loadedCount === imagesToLoad) {
-                            allImagesLoaded = true;
-                            loadingOverlay.classList.add('hidden');
-                            updateStartButton();
-                        }
-                    }
-                );
+                textureLoader.load(member.img, (texture) => {
+                    texture.magFilter = THREE.LinearFilter; texture.minFilter = THREE.LinearFilter;
+                    preloadedTextures[member.id] = texture;
+                    loadedCount++; imagesLoaded = loadedCount;
+                    loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
+                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
+                }, undefined, () => {
+                    loadedCount++; imagesLoaded = loadedCount;
+                    loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
+                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
+                });
+            });
+
+            midBosses.forEach(boss => {
+                textureLoader.load(boss.img, (texture) => {
+                    texture.magFilter = THREE.LinearFilter; texture.minFilter = THREE.LinearFilter;
+                    preloadedBossTextures[boss.id] = texture;
+                    loadedCount++;
+                    loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
+                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
+                }, undefined, () => {
+                    loadedCount++;
+                    loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
+                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
+                });
             });
         }
 
         function updateStartButton() {
             const startBtn = document.getElementById('startBtn');
-            if (!allImagesLoaded) {
-                startBtn.disabled = true;
-                startBtn.textContent = '이미지 로딩 중...';
-            } else if (selectedMembers.size < 2) {
-                startBtn.disabled = true;
-                startBtn.textContent = '2명 이상 선택';
-            } else {
-                startBtn.disabled = false;
-                startBtn.textContent = '경기 시작!';
-            }
+            if (!allImagesLoaded) { startBtn.disabled = true; startBtn.textContent = '이미지 로딩 중...'; }
+            else if (selectedMembers.size < 2) { startBtn.disabled = true; startBtn.textContent = '2명 이상 선택'; }
+            else { startBtn.disabled = false; startBtn.textContent = '경기 시작!'; }
         }
 
         function createMemberGrid() {
@@ -618,10 +455,10 @@
             grid.innerHTML = '';
             members.forEach(member => {
                 const card = document.createElement('div');
-                card.className = 'member-card bg-gray-700 rounded-xl p-3 cursor-pointer border-2 border-transparent';
+                card.className = 'member-card bg-gray-700 p-3 cursor-pointer border-2 border-transparent';
                 card.dataset.id = member.id;
                 card.innerHTML = `
-                    <div class="aspect-square rounded-lg overflow-hidden mb-2 relative">
+                    <div class="aspect-square overflow-hidden mb-2 relative">
                         <img src="${member.imgPng}" alt="${member.name}" class="w-full h-full object-cover">
                         <div class="absolute bottom-0 left-0 w-full h-1" style="background-color: ${member.color}"></div>
                     </div>
@@ -633,54 +470,34 @@
         }
 
         function toggleMember(id, card) {
-            if (selectedMembers.has(id)) {
-                selectedMembers.delete(id);
-                card.classList.remove('selected', 'border-white');
-            } else {
-                selectedMembers.add(id);
-                card.classList.add('selected', 'border-white');
-            }
-            updateSelectedCount();
-            updateStartButton();
+            if (selectedMembers.has(id)) { selectedMembers.delete(id); card.classList.remove('selected', 'border-white'); }
+            else { selectedMembers.add(id); card.classList.add('selected', 'border-white'); }
+            updateSelectedCount(); updateStartButton();
         }
 
         function updateSelectedCount() {
             document.getElementById('selectedCount').textContent = `선택된 멤버: ${selectedMembers.size}명`;
             const maxPass = Math.max(1, selectedMembers.size - 1);
             document.getElementById('passCount').max = maxPass;
-            if (passCount > maxPass) {
-                passCount = maxPass;
-                document.getElementById('passCount').value = passCount;
-            }
+            if (passCount > maxPass) { passCount = maxPass; document.getElementById('passCount').value = passCount; }
         }
 
         document.getElementById('selectAllBtn').addEventListener('click', () => {
             const cards = document.querySelectorAll('.member-card');
-            if (selectedMembers.size === members.length) {
-                selectedMembers.clear();
-                cards.forEach(card => card.classList.remove('selected', 'border-white'));
-            } else {
-                members.forEach(m => selectedMembers.add(m.id));
-                cards.forEach(card => card.classList.add('selected', 'border-white'));
-            }
-            updateSelectedCount();
-            updateStartButton();
+            if (selectedMembers.size === members.length) { selectedMembers.clear(); cards.forEach(card => card.classList.remove('selected', 'border-white')); }
+            else { members.forEach(m => selectedMembers.add(m.id)); cards.forEach(card => card.classList.add('selected', 'border-white')); }
+            updateSelectedCount(); updateStartButton();
         });
 
         const passCountInput = document.getElementById('passCount');
         const passCountWrapper = document.getElementById('passCountWrapper');
-
         passCountWrapper.addEventListener('wheel', (e) => {
             e.preventDefault();
             const max = parseInt(passCountInput.max) || 12;
-            if (e.deltaY < 0 && passCount < max) {
-                passCount++;
-            } else if (e.deltaY > 0 && passCount > 1) {
-                passCount--;
-            }
+            if (e.deltaY < 0 && passCount < max) passCount++;
+            else if (e.deltaY > 0 && passCount > 1) passCount--;
             passCountInput.value = passCount;
         });
-
         passCountInput.addEventListener('change', () => {
             passCount = Math.max(1, Math.min(parseInt(passCountInput.value) || 1, parseInt(passCountInput.max) || 12));
             passCountInput.value = passCount;
@@ -689,10 +506,7 @@
         document.getElementById('startBtn').addEventListener('click', () => {
             if (!allImagesLoaded) return;
             if (selectedMembers.size < 2) return;
-            if (passCount >= selectedMembers.size) {
-                alert('합격 인원은 참가자 수보다 적어야 합니다!');
-                return;
-            }
+            if (passCount >= selectedMembers.size) { alert('합격 인원은 참가자 수보다 적어야 합니다!'); return; }
             document.getElementById('menuScreen').classList.add('hidden');
             document.getElementById('gameScreen').classList.remove('hidden');
             startGame();
@@ -727,15 +541,14 @@
         let sprintRunners = [];
         let startTime = 0;
         let previousRanks = {};
-        let cameraTargetY = 0;
-        let closeupMode = false;
         let gapMode = false;
         let gapRunnerA = null;
         let gapRunnerB = null;
         let gameEndScheduled = false;
-
+        let isPaused = false;
         let sharedGeometries = {};
         let sharedMaterials = {};
+        let bgmStartTime = 0;
 
         function initSharedResources() {
             sharedGeometries = {
@@ -746,21 +559,13 @@
                 boostArrow: null,
                 boostBase: new THREE.PlaneGeometry(2, 3),
                 boostRing: new THREE.RingGeometry(1.2, 1.5, 16),
-                trailPlane: new THREE.PlaneGeometry(0.15, 1),
-                particleGeom: null
+                trailPlane: new THREE.PlaneGeometry(0.15, 1)
             };
-            
             const arrowShape = new THREE.Shape();
-            arrowShape.moveTo(0, 1.2);
-            arrowShape.lineTo(0.8, 0);
-            arrowShape.lineTo(0.4, 0);
-            arrowShape.lineTo(0.4, -1.2);
-            arrowShape.lineTo(-0.4, -1.2);
-            arrowShape.lineTo(-0.4, 0);
-            arrowShape.lineTo(-0.8, 0);
-            arrowShape.lineTo(0, 1.2);
+            arrowShape.moveTo(0, 1.2); arrowShape.lineTo(0.8, 0); arrowShape.lineTo(0.4, 0);
+            arrowShape.lineTo(0.4, -1.2); arrowShape.lineTo(-0.4, -1.2); arrowShape.lineTo(-0.4, 0);
+            arrowShape.lineTo(-0.8, 0); arrowShape.lineTo(0, 1.2);
             sharedGeometries.boostArrow = new THREE.ShapeGeometry(arrowShape);
-
             sharedMaterials = {
                 hurdleBar: new THREE.MeshStandardMaterial({ color: 0xff5500, metalness: 0.5, roughness: 0.3, emissive: 0xff2200, emissiveIntensity: 0.2 }),
                 hurdlePole: new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 }),
@@ -768,36 +573,21 @@
                 boostArrow: new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x006600, emissiveIntensity: 0.4 }),
                 boostBase: new THREE.MeshStandardMaterial({ color: 0x004400, transparent: true, opacity: 0.5 }),
                 boostRing: new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
-                gravelColors: [0x888888, 0x777777, 0x999999, 0x666666].map(c => 
+                gravelColors: [0x888888, 0x777777, 0x999999, 0x666666].map(c =>
                     new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, metalness: 0.2 })
                 )
             };
         }
 
         function startGame() {
-            finishedRunners = [];
-            ultimateUsed = false;
-            ultimateActive = false;
-            confirmedRanks = new Set();
-            gameTime = 0;
-            slowMotion = false;
-            slowMotionFactor = 1;
-            currentCameraMode = 'overview';
-            prevCameraMode = 'overview';
-            cameraChangeTimer = 0;
-            startingSequence = true;
-            raceStarted = false;
-            raceEnded = false;
-            sprintPhaseStarted = false;
-            sprintRunners = [];
-            startTime = 0;
-            previousRanks = {};
-            cameraTargetY = 0;
-            closeupMode = false;
-            gapMode = false;
-            gapRunnerA = null;
-            gapRunnerB = null;
-            gameEndScheduled = false;
+            finishedRunners = []; ultimateUsed = false; ultimateActive = false; confirmedRanks = new Set();
+            gameTime = 0; slowMotion = false; slowMotionFactor = 1; currentCameraMode = 'overview';
+            prevCameraMode = 'overview'; cameraChangeTimer = 0; startingSequence = true; raceStarted = false;
+            raceEnded = false; sprintPhaseStarted = false; sprintRunners = []; startTime = 0;
+            previousRanks = {}; gapMode = false;
+            gapRunnerA = null; gapRunnerB = null; gameEndScheduled = false; isPaused = false;
+            midBossTriggered = false; midBossActive = false; currentMidBoss = null; midBossMesh = null;
+            shieldedRunners = new Set(); electrocutedRunners = new Set(); bgmStartTime = 0;
 
             document.getElementById('rankingContainer').style.opacity = '0';
             document.getElementById('ultimateAlert').classList.add('hidden');
@@ -807,51 +597,52 @@
             document.getElementById('sprintScreenEffect').classList.add('hidden');
             document.getElementById('sprintSpeedLines').classList.add('hidden');
             document.getElementById('sprintWindEffect').classList.add('hidden');
-            document.getElementById('closeupOverlay').classList.add('hidden');
+            document.getElementById('midbossSplitOverlay').classList.remove('active');
+            document.getElementById('midbossCharacterDisplay').classList.remove('active');
+            document.getElementById('midbossAlert').classList.add('hidden');
+            
+            document.getElementById('midbossCharacterImage').src = '';
+            document.getElementById('sprintCharacterImage').src = '';
 
-            // Reset volume slider to current state
             document.getElementById('volumeSlider').value = currentVolume * 100;
             updateMuteIcon(isMuted ? 0 : currentVolume);
 
-            // BGM 시작
-            if (bgm) {
-                bgm.pause();
+            if (bgm) { 
+                bgm.pause(); 
                 bgm.currentTime = 0;
+                bgm.src = '';
+                bgm = null;
             }
             bgm = new Audio('https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/chuntaverse.mp3');
             bgm.volume = isMuted ? 0 : currentVolume;
-            bgm.play().catch(function(e) { console.log('Audio play failed:', e); });
+            bgm.load();
+            const playPromise = bgm.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(function(e) { 
+                    console.log('Audio play failed:', e);
+                    document.addEventListener('click', function retryPlay() {
+                        bgm.play().catch(() => {});
+                        document.removeEventListener('click', retryPlay);
+                    }, { once: true });
+                });
+            }
+            bgmStartTime = performance.now();
 
             if (scene) {
                 scene.traverse((object) => {
                     if (object.geometry) object.geometry.dispose();
                     if (object.material) {
-                        if (Array.isArray(object.material)) {
-                            object.material.forEach(m => m.dispose());
-                        } else {
-                            object.material.dispose();
-                        }
+                        if (Array.isArray(object.material)) object.material.forEach(m => m.dispose());
+                        else object.material.dispose();
                     }
                 });
-                while (scene.children.length > 0) {
-                    scene.remove(scene.children[0]);
-                }
+                while (scene.children.length > 0) scene.remove(scene.children[0]);
             }
-            if (renderer) {
-                renderer.dispose();
-            }
+            if (renderer) renderer.dispose();
 
-            runners = [];
-            obstacles = [];
-
-            initSharedResources();
-            initThreeJS();
-            createTrack();
-            createRunners();
-            createObstacles();
-            gameRunning = true;
-            lastTime = 0;
-            
+            runners = []; obstacles = [];
+            initSharedResources(); initThreeJS(); createTrack(); createRunners(); createObstacles();
+            gameRunning = true; lastTime = 0;
             runStartingSequence();
         }
 
@@ -860,48 +651,30 @@
             const laneCount = selectedArray.length;
             const laneWidth = 6;
             const trackWidth = laneCount * laneWidth;
-
             const startX = -trackWidth / 2 + laneWidth / 2;
             const startPos = new THREE.Vector3(startX - 6, 6, 8);
-            camera.position.copy(startPos);
-            camera.lookAt(startX, 2, 0);
-            
+            camera.position.copy(startPos); camera.lookAt(startX, 2, 0);
             camera.lookAtVector = new THREE.Vector3(startX, 2, 0);
-            
             renderer.render(scene, camera);
 
             setTimeout(() => {
                 const endX = -trackWidth / 2 + laneWidth / 2 + (laneCount - 1) * laneWidth;
                 const endPos = new THREE.Vector3(endX - 6, 6, 8);
                 const endLookAt = new THREE.Vector3(endX, 2, 0);
-                
                 const startLookAt = camera.lookAtVector.clone();
                 const duration = 5500;
                 const animStartTime = performance.now();
-
                 function animateSweep() {
                     const elapsed = performance.now() - animStartTime;
                     const progress = Math.min(elapsed / duration, 1);
-                    
                     const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-                    
                     camera.position.lerpVectors(startPos, endPos, ease);
-                    
                     const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, endLookAt, ease);
-                    camera.lookAtVector = currentLookAt;
-                    camera.lookAt(currentLookAt);
-                    
+                    camera.lookAtVector = currentLookAt; camera.lookAt(currentLookAt);
                     renderer.render(scene, camera);
-                    
-                    if (progress < 1) {
-                        requestAnimationFrame(animateSweep);
-                    } else {
-                        setTimeout(() => {
-                            showFullStartingLine(trackWidth, laneWidth, laneCount);
-                        }, 500);
-                    }
+                    if (progress < 1) requestAnimationFrame(animateSweep);
+                    else setTimeout(() => { showFullStartingLine(trackWidth, laneWidth, laneCount); }, 500);
                 }
-                
                 animateSweep();
             }, 500);
         }
@@ -909,118 +682,68 @@
         function showFullStartingLine(trackWidth, laneWidth, laneCount) {
             const startPos = camera.position.clone();
             const startLookAt = camera.lookAtVector.clone();
-            
             const endPos = new THREE.Vector3(0, 18, -40);
             const endLookAt = new THREE.Vector3(0, 2, 0);
-            
             const duration = 3500;
             const animStartTime = performance.now();
-            
             function animateToFullView() {
                 const elapsed = performance.now() - animStartTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-                
                 camera.position.lerpVectors(startPos, endPos, ease);
-                
                 const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, endLookAt, ease);
-                camera.lookAtVector = currentLookAt;
-                camera.lookAt(currentLookAt);
-                
+                camera.lookAtVector = currentLookAt; camera.lookAt(currentLookAt);
                 renderer.render(scene, camera);
-                
-                if (progress < 1) {
-                    requestAnimationFrame(animateToFullView);
-                } else {
-                    startCountdown();
-                }
+                if (progress < 1) requestAnimationFrame(animateToFullView);
+                else startCountdown();
             }
-            
             animateToFullView();
         }
 
         function startCountdown() {
             const countdownAlert = document.getElementById('countdownAlert');
             const countdownDiv = countdownAlert.querySelector('div');
-            
             countdownAlert.classList.remove('hidden');
-            countdownDiv.classList.remove('countdown-text');
-            void countdownDiv.offsetWidth;
-            countdownDiv.classList.add('countdown-text');
-            countdownDiv.textContent = '제자리에';
-            countdownDiv.style.color = '#ffffff';
-            countdownDiv.style.textShadow = 'none';
-
+            countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
+            countdownDiv.textContent = '제자리에'; countdownDiv.style.color = '#ffffff'; countdownDiv.style.textShadow = 'none';
             setTimeout(() => {
-                countdownDiv.classList.remove('countdown-text');
-                void countdownDiv.offsetWidth;
-                countdownDiv.classList.add('countdown-text');
-                countdownDiv.textContent = '준비';
-                countdownDiv.style.color = '#ffffff';
-                countdownDiv.style.textShadow = 'none';
+                countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
+                countdownDiv.textContent = '준비'; countdownDiv.style.color = '#ffffff'; countdownDiv.style.textShadow = 'none';
             }, 1000);
-
             setTimeout(() => {
-                countdownDiv.classList.remove('countdown-text');
-                void countdownDiv.offsetWidth;
-                countdownDiv.classList.add('countdown-text');
-                countdownDiv.textContent = '출발!';
-                countdownDiv.style.color = '#22c55e';
-                countdownDiv.style.textShadow = '0 0 20px rgba(34, 197, 94, 0.8)';
-                
-                startingSequence = false;
-                raceStarted = true;
-                startTime = 0;
-                
+                countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
+                countdownDiv.textContent = '출발!'; countdownDiv.style.color = '#22c55e';
+                countdownDiv.style.textShadow = 'none';
+                startingSequence = false; raceStarted = true; startTime = 0;
                 document.getElementById('rankingContainer').style.opacity = '1';
-                
-                lastTime = 0;
-                animate();
+                lastTime = 0; animate();
             }, 3000);
-
-            setTimeout(() => {
-                countdownAlert.classList.add('hidden');
-            }, 3500);
+            setTimeout(() => { countdownAlert.classList.add('hidden'); }, 3500);
         }
 
         function initThreeJS() {
             const container = document.getElementById('canvasContainer');
             const canvas = document.getElementById('gameCanvas');
-
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x1a1a2e);
             scene.fog = new THREE.Fog(0x1a1a2e, 50, 300);
-
             camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1500);
-            camera.position.set(0, 30, -20);
-            camera.lookAt(0, 0, 50);
+            camera.position.set(0, 30, -20); camera.lookAt(0, 0, 50);
             camera.lookAtVector = new THREE.Vector3(0, 0, 50);
-
             renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.sortObjects = true;
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-            scene.add(ambientLight);
-
+            renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.sortObjects = true;
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            directionalLight.position.set(50, 100, 50);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.mapSize.width = 1024;
-            directionalLight.shadow.mapSize.height = 1024;
-            directionalLight.shadow.camera.left = -100;
-            directionalLight.shadow.camera.right = 100;
-            directionalLight.shadow.camera.top = 100;
-            directionalLight.shadow.camera.bottom = -100;
+            directionalLight.position.set(50, 100, 50); directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024; directionalLight.shadow.mapSize.height = 1024;
+            directionalLight.shadow.camera.left = -100; directionalLight.shadow.camera.right = 100;
+            directionalLight.shadow.camera.top = 100; directionalLight.shadow.camera.bottom = -100;
             scene.add(directionalLight);
-
             window.addEventListener('resize', () => {
                 camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
+                camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight);
             });
         }
 
@@ -1030,36 +753,27 @@
             const laneWidth = 6;
             const trackWidth = laneCount * laneWidth;
             const totalTrackLength = trackLength + 200;
-
             const trackGeometry = new THREE.PlaneGeometry(trackWidth + 10, totalTrackLength);
             const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x1f3b4d });
             const track = new THREE.Mesh(trackGeometry, trackMaterial);
-            track.rotation.x = -Math.PI / 2;
-            track.position.set(0, -0.1, totalTrackLength / 2 - 100);
-            track.receiveShadow = true;
+            track.rotation.x = -Math.PI / 2; track.position.set(0, -0.1, totalTrackLength / 2 - 100); track.receiveShadow = true;
             scene.add(track);
-
             const lineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
             for (let i = 0; i <= laneCount; i++) {
                 const lineGeometry = new THREE.PlaneGeometry(0.12, totalTrackLength);
                 const line = new THREE.Mesh(lineGeometry, lineMaterial);
-                line.rotation.x = -Math.PI / 2;
-                line.position.set(-trackWidth / 2 + i * laneWidth, 0.01, totalTrackLength / 2 - 100);
+                line.rotation.x = -Math.PI / 2; line.position.set(-trackWidth / 2 + i * laneWidth, 0.01, totalTrackLength / 2 - 100);
                 scene.add(line);
             }
-
             const finishGeometry = new THREE.PlaneGeometry(trackWidth + 10, 4);
             const finishMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
             finishLine = new THREE.Mesh(finishGeometry, finishMaterial);
-            finishLine.rotation.x = -Math.PI / 2;
-            finishLine.position.set(0, 0.02, trackLength);
+            finishLine.rotation.x = -Math.PI / 2; finishLine.position.set(0, 0.02, trackLength);
             scene.add(finishLine);
-
             const startGeometry = new THREE.PlaneGeometry(trackWidth + 10, 3);
             const startMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
             const startLine = new THREE.Mesh(startGeometry, startMaterial);
-            startLine.rotation.x = -Math.PI / 2;
-            startLine.position.set(0, 0.02, 0);
+            startLine.rotation.x = -Math.PI / 2; startLine.position.set(0, 0.02, 0);
             scene.add(startLine);
         }
 
@@ -1071,174 +785,117 @@
                 const j = Math.floor(Math.random() * (i + 1));
                 [shuffledMembers[i], shuffledMembers[j]] = [shuffledMembers[j], shuffledMembers[i]];
             }
-            
             const laneCount = selectedArray.length;
             const laneWidth = 6;
             const trackWidth = laneCount * laneWidth;
-
             shuffledMembers.forEach((member, index) => {
                 const laneX = -trackWidth / 2 + laneWidth / 2 + index * laneWidth;
-
                 const bodyGroup = new THREE.Group();
                 const runnerColor = new THREE.Color(member.color);
-
                 const torsoGeom = new THREE.BoxGeometry(2.2, 2.2, 1.4);
-
                 const preloadedTex = preloadedTextures[member.id];
-
                 const sideMat = new THREE.MeshStandardMaterial({ color: runnerColor });
                 const topMat = new THREE.MeshStandardMaterial({ color: runnerColor });
                 const bottomMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-                const frontMat = new THREE.MeshStandardMaterial({ 
-                    color: 0xffffff,
-                    map: preloadedTex || null
-                });
-                const backMat = new THREE.MeshStandardMaterial({ 
-                    color: 0xffffff,
-                    map: preloadedTex || null
-                });
-
-                const torsoMaterials = [
-                    sideMat,
-                    sideMat.clone(),
-                    topMat,
-                    bottomMat,
-                    frontMat,
-                    backMat,
-                ];
-
+                const frontMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: preloadedTex || null });
+                const backMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: preloadedTex || null });
+                const torsoMaterials = [sideMat, sideMat.clone(), topMat, bottomMat, frontMat, backMat];
                 const torso = new THREE.Mesh(torsoGeom, torsoMaterials);
-                torso.position.y = 1.8;
-                torso.castShadow = true;
-                bodyGroup.add(torso);
-
+                torso.position.y = 1.8; torso.castShadow = true; bodyGroup.add(torso);
                 const legGeom = new THREE.BoxGeometry(0.4, 0.9, 0.4);
                 const legMat = new THREE.MeshStandardMaterial({ color: runnerColor });
-
                 const leftLegGroup = new THREE.Group();
-                const leftLeg = new THREE.Mesh(legGeom, legMat);
-                leftLeg.position.y = -0.45;
-                leftLeg.castShadow = true;
-                leftLegGroup.add(leftLeg);
-                leftLegGroup.position.set(-0.5, 0.9, 0);
-                bodyGroup.add(leftLegGroup);
-
+                const leftLeg = new THREE.Mesh(legGeom, legMat); leftLeg.position.y = -0.45; leftLeg.castShadow = true;
+                leftLegGroup.add(leftLeg); leftLegGroup.position.set(-0.5, 0.9, 0); bodyGroup.add(leftLegGroup);
                 const rightLegGroup = new THREE.Group();
-                const rightLeg = new THREE.Mesh(legGeom, legMat.clone());
-                rightLeg.position.y = -0.45;
-                rightLeg.castShadow = true;
-                rightLegGroup.add(rightLeg);
-                rightLegGroup.position.set(0.5, 0.9, 0);
-                bodyGroup.add(rightLegGroup);
-
+                const rightLeg = new THREE.Mesh(legGeom, legMat.clone()); rightLeg.position.y = -0.45; rightLeg.castShadow = true;
+                rightLegGroup.add(rightLeg); rightLegGroup.position.set(0.5, 0.9, 0); bodyGroup.add(rightLegGroup);
                 const armGeom = new THREE.BoxGeometry(0.25, 0.8, 0.25);
                 const armMat = new THREE.MeshStandardMaterial({ color: runnerColor });
-
                 const leftArmGroup = new THREE.Group();
-                const leftArm = new THREE.Mesh(armGeom, armMat);
-                leftArm.position.y = -0.4;
-                leftArm.castShadow = true;
-                leftArmGroup.add(leftArm);
-                leftArmGroup.position.set(-1.3, 2.1, 0);
-                bodyGroup.add(leftArmGroup);
-
+                const leftArm = new THREE.Mesh(armGeom, armMat); leftArm.position.y = -0.4; leftArm.castShadow = true;
+                leftArmGroup.add(leftArm); leftArmGroup.position.set(-1.3, 2.1, 0); bodyGroup.add(leftArmGroup);
                 const rightArmGroup = new THREE.Group();
-                const rightArm = new THREE.Mesh(armGeom, armMat.clone());
-                rightArm.position.y = -0.4;
-                rightArm.castShadow = true;
-                rightArmGroup.add(rightArm);
-                rightArmGroup.position.set(1.3, 2.1, 0);
-                bodyGroup.add(rightArmGroup);
+                const rightArm = new THREE.Mesh(armGeom, armMat.clone()); rightArm.position.y = -0.4; rightArm.castShadow = true;
+                rightArmGroup.add(rightArm); rightArmGroup.position.set(1.3, 2.1, 0); bodyGroup.add(rightArmGroup);
 
                 const nameCanvas = document.createElement('canvas');
                 const nameLength = member.name.length;
                 let fontSize, planeWidth, planeHeight;
-                
-                if (nameLength <= 2) {
-                    fontSize = 220;
-                    planeWidth = 20;
-                    planeHeight = 5.5;
-                } else if (nameLength === 3) {
-                    fontSize = 220;
-                    planeWidth = 20;
-                    planeHeight = 5.5;
-                } else {
-                    fontSize = 180;
-                    planeWidth = 22;
-                    planeHeight = 5;
-                }
-
-                nameCanvas.width = fontSize * 8;
-                nameCanvas.height = fontSize * 2;
+                if (nameLength <= 2) { fontSize = 220; planeWidth = 20; planeHeight = 5.5; }
+                else if (nameLength === 3) { fontSize = 220; planeWidth = 20; planeHeight = 5.5; }
+                else { fontSize = 180; planeWidth = 22; planeHeight = 5; }
+                nameCanvas.width = fontSize * 8; nameCanvas.height = fontSize * 2;
                 const nctx = nameCanvas.getContext('2d');
-                
                 nctx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
-
-                nctx.strokeStyle = 'rgba(0,0,0,0.8)';
-                nctx.lineWidth = 12;
-                nctx.font = `900 ${fontSize}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
-                nctx.textAlign = 'center';
-                nctx.textBaseline = 'middle';
+                nctx.strokeStyle = 'rgba(0,0,0,0.8)'; nctx.lineWidth = 12;
+                nctx.font = `900 ${fontSize}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
+                nctx.textAlign = 'center'; nctx.textBaseline = 'middle';
                 nctx.strokeText(member.name, nameCanvas.width / 2, nameCanvas.height / 2);
-                
                 nctx.fillStyle = member.color;
-                nctx.font = `900 ${fontSize}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+                nctx.font = `900 ${fontSize}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
                 nctx.fillText(member.name, nameCanvas.width / 2, nameCanvas.height / 2);
-
                 const nameTexture = new THREE.CanvasTexture(nameCanvas);
-                const nameMat = new THREE.MeshBasicMaterial({
-                    map: nameTexture,
-                    transparent: true,
-                    side: THREE.DoubleSide,
-                    depthTest: true,
-                    depthWrite: false,
-                });
+                const nameMat = new THREE.MeshBasicMaterial({ map: nameTexture, transparent: true, side: THREE.DoubleSide, depthTest: true, depthWrite: false });
                 const nameGeom = new THREE.PlaneGeometry(planeWidth, planeHeight);
                 const nameMesh = new THREE.Mesh(nameGeom, nameMat);
-                nameMesh.rotation.x = -Math.PI / 2;
-                nameMesh.rotation.z = Math.PI / 2;
-                nameMesh.position.set(laneX, 0.07, -8);
-                scene.add(nameMesh);
-
-                bodyGroup.position.set(laneX, 0, 0);
-                bodyGroup.castShadow = true;
-                scene.add(bodyGroup);
-
+                nameMesh.rotation.x = -Math.PI / 2; nameMesh.rotation.z = Math.PI / 2;
+                nameMesh.position.set(laneX, 0.07, -8); scene.add(nameMesh);
+                bodyGroup.position.set(laneX, 0, 0); bodyGroup.castShadow = true; scene.add(bodyGroup);
                 const individualSpeed = 12.0 + Math.random() * 2.5;
-
                 runners.push({
-                    member,
-                    mesh: bodyGroup,
-                    nameMesh,
-                    torso,
-                    leftArm: leftArmGroup,
-                    rightArm: rightArmGroup,
-                    leftLeg: leftLegGroup,
-                    rightLeg: rightLegGroup,
-                    lane: index,
-                    laneX,
-                    position: 0,
-                    speed: individualSpeed,
-                    baseSpeed: individualSpeed,
-                    slowdownTimer: 0,
-                    speedBoostTimer: 0,
-                    animPhase: Math.random() * Math.PI * 2,
-                    finished: false,
-                    finishTime: 0,
-                    ultimateActive: false,
-                    tiltPhase: Math.random() * Math.PI * 2,
-                    isJumping: false,
-                    jumpPhase: 0,
-                    jumpHeight: 0,
-                    jumpStartPos: 0,
-                    isSprinting: false,
-                    sprintSpeed: 0,
-                    sprintEffects: null,
-                    currentEvent: null,
-                    hurdleFailCount: 0,
-                    currentRank: index + 1
+                    member, mesh: bodyGroup, nameMesh, torso,
+                    leftArm: leftArmGroup, rightArm: rightArmGroup, leftLeg: leftLegGroup, rightLeg: rightLegGroup,
+                    lane: index, laneX, position: 0, speed: individualSpeed, baseSpeed: individualSpeed,
+                    slowdownTimer: 0, speedBoostTimer: 0, animPhase: Math.random() * Math.PI * 2,
+                    finished: false, finishTime: 0, ultimateActive: false, tiltPhase: Math.random() * Math.PI * 2,
+                    isJumping: false, jumpPhase: 0, jumpHeight: 0, jumpStartPos: 0,
+                    isSprinting: false, sprintSpeed: 0, sprintEffects: null, currentEvent: null,
+                    hurdleFailCount: 0, currentRank: index + 1,
+                    hasShield: false, shieldCharges: 0, shieldMeshes: [],
+                    isElectrocuted: false, electrocuteTimer: 0,
+                    isPushedBack: false, pushBackTarget: 0,
+                    shieldProcessedObs: new Set()
                 });
             });
+        }
+
+        function createMidBossMesh(bossData) {
+            const bodyGroup = new THREE.Group();
+            const bossColor = new THREE.Color(bossData.color);
+            const torsoGeom = new THREE.BoxGeometry(2.2, 2.2, 1.4);
+            const bossTex = preloadedBossTextures[bossData.id];
+            const sideMat = new THREE.MeshStandardMaterial({ color: bossColor });
+            const topMat = new THREE.MeshStandardMaterial({ color: bossColor });
+            const bottomMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const frontMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: bossTex || null });
+            const backMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: bossTex || null });
+            const torsoMaterials = [sideMat, sideMat.clone(), topMat, bottomMat, frontMat, backMat];
+            const torso = new THREE.Mesh(torsoGeom, torsoMaterials);
+            torso.position.y = 1.8; torso.castShadow = true; bodyGroup.add(torso);
+
+            const legGeom = new THREE.BoxGeometry(0.4, 0.9, 0.4);
+            const legMat = new THREE.MeshStandardMaterial({ color: bossColor });
+            const leftLeg = new THREE.Mesh(legGeom, legMat); leftLeg.position.set(-0.5, 0.45, 0); bodyGroup.add(leftLeg);
+            const rightLeg = new THREE.Mesh(legGeom, legMat.clone()); rightLeg.position.set(0.5, 0.45, 0); bodyGroup.add(rightLeg);
+
+            const armGeom = new THREE.BoxGeometry(0.25, 0.8, 0.25);
+            const armMat = new THREE.MeshStandardMaterial({ color: bossColor });
+            const leftArm = new THREE.Mesh(armGeom, armMat); leftArm.position.set(-1.3, 1.7, 0); bodyGroup.add(leftArm);
+            const rightArm = new THREE.Mesh(armGeom, armMat.clone()); rightArm.position.set(1.3, 1.7, 0); bodyGroup.add(rightArm);
+
+            const glowGeom = new THREE.SphereGeometry(3, 16, 16);
+            const glowMat = new THREE.MeshBasicMaterial({ 
+                color: bossColor, 
+                transparent: true, 
+                opacity: 0.3,
+                side: THREE.BackSide
+            });
+            const glow = new THREE.Mesh(glowGeom, glowMat);
+            glow.position.y = 1.5;
+            bodyGroup.add(glow);
+
+            return bodyGroup;
         }
 
         function createObstacles() {
@@ -1247,247 +904,557 @@
             const laneCount = selectedArray.length;
             const laneWidth = 6;
             const trackWidth = laneCount * laneWidth;
-            
             const minSpacing = 25;
-
+            let obsIdCounter = 0;
             for (let lane = 0; lane < laneCount; lane++) {
                 const laneX = -trackWidth / 2 + laneWidth / 2 + lane * laneWidth;
-                
-                const trackStart = 60;
-                const trackEnd = trackLength - 50;
+                const trackStart = 60; const trackEnd = trackLength - 50;
                 const availableLength = trackEnd - trackStart;
-                
                 const numHurdles = 3 + Math.floor(Math.random() * 3);
                 const numGravels = 2 + Math.floor(Math.random() * 2);
                 const numBoosts = 2 + Math.floor(Math.random() * 3);
                 const totalObstacles = numHurdles + numGravels + numBoosts;
-                
                 const positions = [];
                 for (let i = 0; i < totalObstacles; i++) {
-                    let attempts = 0;
-                    let validPos = false;
-                    let newPos;
-                    
+                    let attempts = 0; let validPos = false; let newPos;
                     while (!validPos && attempts < 100) {
-                        newPos = trackStart + Math.random() * availableLength;
-                        validPos = true;
-                        
-                        for (const existingPos of positions) {
-                            if (Math.abs(newPos - existingPos) < minSpacing) {
-                                validPos = false;
-                                break;
-                            }
-                        }
+                        newPos = trackStart + Math.random() * availableLength; validPos = true;
+                        for (const existingPos of positions) { if (Math.abs(newPos - existingPos) < minSpacing) { validPos = false; break; } }
                         attempts++;
                     }
-                    
-                    if (validPos) {
-                        positions.push(newPos);
-                    }
+                    if (validPos) positions.push(newPos);
                 }
-                
                 positions.sort(() => Math.random() - 0.5);
-                
                 let posIndex = 0;
-                
                 for (let i = 0; i < numHurdles && posIndex < positions.length; i++) {
                     const zPos = positions[posIndex++];
-                    
                     const hurdleGroup = new THREE.Group();
-                    
-                    const bar = new THREE.Mesh(sharedGeometries.hurdleBar, sharedMaterials.hurdleBar);
-                    bar.position.y = 0.7;
-                    hurdleGroup.add(bar);
-                    
-                    const leftPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole);
-                    leftPole.position.set(-1.5, 0.35, 0);
-                    hurdleGroup.add(leftPole);
-                    
-                    const rightPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole);
-                    rightPole.position.set(1.5, 0.35, 0);
-                    hurdleGroup.add(rightPole);
-                    
-                    const leftReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector);
-                    leftReflector.position.set(-1.5, 0.7, 0);
-                    hurdleGroup.add(leftReflector);
-                    
-                    const rightReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector);
-                    rightReflector.position.set(1.5, 0.7, 0);
-                    hurdleGroup.add(rightReflector);
-
-                    hurdleGroup.position.set(laneX, 0, zPos);
-                    scene.add(hurdleGroup);
-                    obstacles.push({ type: 'hurdle', mesh: hurdleGroup, lane, zPos });
+                    const bar = new THREE.Mesh(sharedGeometries.hurdleBar, sharedMaterials.hurdleBar); bar.position.y = 0.7; hurdleGroup.add(bar);
+                    const leftPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole); leftPole.position.set(-1.5, 0.35, 0); hurdleGroup.add(leftPole);
+                    const rightPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole); rightPole.position.set(1.5, 0.35, 0); hurdleGroup.add(rightPole);
+                    const leftReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector); leftReflector.position.set(-1.5, 0.7, 0); hurdleGroup.add(leftReflector);
+                    const rightReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector); rightReflector.position.set(1.5, 0.7, 0); hurdleGroup.add(rightReflector);
+                    hurdleGroup.position.set(laneX, 0, zPos); scene.add(hurdleGroup);
+                    obstacles.push({ type: 'hurdle', mesh: hurdleGroup, lane, zPos, obsId: obsIdCounter++ });
                 }
-
                 for (let i = 0; i < numGravels && posIndex < positions.length; i++) {
                     const zPos = positions[posIndex++];
-                    
                     const gravelGroup = new THREE.Group();
-                    
                     for (let j = 0; j < 40; j++) {
                         const size = 0.12 + Math.random() * 0.2;
                         const matIndex = Math.floor(Math.random() * sharedMaterials.gravelColors.length);
                         const stone = new THREE.Mesh(sharedGeometries.stone, sharedMaterials.gravelColors[matIndex]);
                         stone.scale.set(size, size, size);
-                        
-                        stone.position.set(
-                            (Math.random() - 0.5) * 4.2,
-                            size / 2,
-                            (Math.random() - 0.5) * 4.2
-                        );
-                        
-                        stone.rotation.set(
-                            Math.random() * Math.PI * 2,
-                            Math.random() * Math.PI * 2,
-                            Math.random() * Math.PI * 2
-                        );
-                        
-                        stone.castShadow = true;
-                        gravelGroup.add(stone);
+                        stone.position.set((Math.random() - 0.5) * 4.2, size / 2, (Math.random() - 0.5) * 4.2);
+                        stone.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
+                        stone.castShadow = true; gravelGroup.add(stone);
                     }
-
-                    gravelGroup.position.set(laneX, 0, zPos);
-                    scene.add(gravelGroup);
-                    obstacles.push({ type: 'gravel', mesh: gravelGroup, lane, zPos });
+                    gravelGroup.position.set(laneX, 0, zPos); scene.add(gravelGroup);
+                    obstacles.push({ type: 'gravel', mesh: gravelGroup, lane, zPos, obsId: obsIdCounter++ });
                 }
-
                 for (let i = 0; i < numBoosts && posIndex < positions.length; i++) {
                     const zPos = positions[posIndex++];
-                    
                     const boostGroup = new THREE.Group();
-                    
                     const arrow = new THREE.Mesh(sharedGeometries.boostArrow, sharedMaterials.boostArrow);
-                    arrow.rotation.x = -Math.PI / 2;
-                    arrow.rotation.z = Math.PI;
-                    arrow.position.y = 0.05;
-                    boostGroup.add(arrow);
-                    
+                    arrow.rotation.x = -Math.PI / 2; arrow.rotation.z = Math.PI; arrow.position.y = 0.05; boostGroup.add(arrow);
                     const base = new THREE.Mesh(sharedGeometries.boostBase, sharedMaterials.boostBase);
-                    base.rotation.x = -Math.PI / 2;
-                    base.position.y = 0.03;
-                    boostGroup.add(base);
-                    
+                    base.rotation.x = -Math.PI / 2; base.position.y = 0.03; boostGroup.add(base);
                     const ring = new THREE.Mesh(sharedGeometries.boostRing, sharedMaterials.boostRing);
-                    ring.rotation.x = -Math.PI / 2;
-                    ring.position.y = 0.06;
-                    boostGroup.add(ring);
-
-                    boostGroup.position.set(laneX, 0.05, zPos);
-                    scene.add(boostGroup);
-                    obstacles.push({ type: 'boost', mesh: boostGroup, lane, zPos });
+                    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; boostGroup.add(ring);
+                    boostGroup.position.set(laneX, 0.05, zPos); scene.add(boostGroup);
+                    obstacles.push({ type: 'boost', mesh: boostGroup, lane, zPos, obsId: obsIdCounter++ });
                 }
             }
         }
 
-        function triggerSprintPhase() {
-            if (sprintPhaseStarted || ultimateUsed || !sprintEnabled) return;
+        function checkMidBossEvent() {
+            if (midBossTriggered || !raceStarted || raceEnded) return;
             
-            sprintPhaseStarted = true;
-            ultimateUsed = true;
-            ultimateActive = true;
+            const currentBgmTime = bgm ? bgm.currentTime : 0;
             
-            document.getElementById('sprintScreenEffect').classList.remove('hidden');
-            document.getElementById('sprintSpeedLines').classList.remove('hidden');
-            document.getElementById('sprintWindEffect').classList.remove('hidden');
-            
-            const activeRunners = runners.filter(r => !r.finished);
-            if (activeRunners.length === 0) return;
-            
-            const sortedByPosition = [...activeRunners].sort((a, b) => b.position - a.position);
-            
-            const weights = [];
-            const totalRunners = sortedByPosition.length;
-            
-            sortedByPosition.forEach((runner, index) => {
-                const rankFromBottom = totalRunners - index;
-                const weight = Math.pow(rankFromBottom, 2.5);
-                weights.push({ runner, weight });
-            });
-            
-            let numSprinters = 1;
-            if (Math.random() < 0.1 && totalRunners > 1) {
-                numSprinters = 2;
+            if (currentBgmTime >= 27 && currentBgmTime < 28 && !midBossTriggered) {
+                midBossTriggered = true;
+                triggerMidBossEvent();
             }
+        }
+
+        function triggerMidBossEvent() {
+            isPaused = true;
+            midBossActive = true;
+
+            const bossIndex = Math.floor(Math.random() * 3);
+            currentMidBoss = midBosses[bossIndex];
+
+            midBossMesh = createMidBossMesh(currentMidBoss);
+            midBossMesh.position.set(0, 15, trackLength - 20);
+            midBossMesh.scale.set(2, 2, 2);
+            scene.add(midBossMesh);
+
+            document.getElementById('midbossSplitOverlay').classList.add('active');
             
-            sprintRunners = [];
-            const selectedWeights = [...weights];
+            const characterDisplay = document.getElementById('midbossCharacterDisplay');
+            const characterImage = document.getElementById('midbossCharacterImage');
+            const characterText = document.getElementById('midbossCharacterText');
             
-            for (let i = 0; i < Math.min(numSprinters, totalRunners); i++) {
-                let randomValue = Math.random() * selectedWeights.reduce((sum, item) => sum + item.weight, 0);
-                let selectedIndex = 0;
+            const img = new Image();
+            img.onload = function() {
+                characterImage.src = currentMidBoss.img;
+                characterText.textContent = currentMidBoss.name;
+                characterText.style.color = currentMidBoss.color;
+                characterDisplay.classList.add('active');
+            };
+            img.src = currentMidBoss.img;
+
+            if (bgm) bgm.volume = bgm.volume * 0.3;
+
+            setTimeout(() => {
+                activateMidBossEffect();
+            }, 3000);
+        }
+
+        function activateMidBossEffect() {
+            document.getElementById('midbossSplitOverlay').classList.remove('active');
+            document.getElementById('midbossCharacterDisplay').classList.remove('active');
+
+            if (midBossMesh) {
+                scene.remove(midBossMesh);
+                midBossMesh = null;
+            }
+
+            if (bgm) bgm.volume = isMuted ? 0 : currentVolume;
+
+            switch(currentMidBoss.id) {
+                case 'authority':
+                    executeAuthorityEffect();
+                    break;
+                case 'jongyang':
+                    executeJongYangEffect();
+                    break;
+                case 'thunder':
+                    executeThunderEffect();
+                    break;
+            }
+        }
+
+        function executeAuthorityEffect() {
+            const eligibleRunners = runners.filter(r => r.member.name !== '천양' && !r.finished);
+            if (eligibleRunners.length === 0) {
+                finishMidBossEvent();
+                return;
+            }
+
+            let numToPush;
+            if (eligibleRunners.length === 1) {
+                numToPush = 1;
+            } else if (eligibleRunners.length === 2) {
+                numToPush = Math.random() < 0.7 ? 2 : 1;
+            } else {
+                const rand = Math.random();
+                if (rand < 0.5) {
+                    numToPush = 3;
+                } else if (rand < 0.8) {
+                    numToPush = 2;
+                } else {
+                    numToPush = 1;
+                }
+                numToPush = Math.min(numToPush, eligibleRunners.length);
+            }
+
+            const shuffled = [...eligibleRunners].sort(() => Math.random() - 0.5);
+            const targetRunners = shuffled.slice(0, numToPush);
+
+            let pushIndex = 0;
+            
+            function pushNextRunner() {
+                if (pushIndex >= targetRunners.length) {
+                    finishMidBossEvent();
+                    return;
+                }
+
+                const runner = targetRunners[pushIndex];
                 
-                for (let j = 0; j < selectedWeights.length; j++) {
-                    randomValue -= selectedWeights[j].weight;
-                    if (randomValue <= 0) {
-                        selectedIndex = j;
-                        break;
+                const midbossAlert = document.getElementById('midbossAlert');
+                midbossAlert.querySelector('div').innerHTML = `<span style="color: ${runner.member.color};">${runner.member.name}</span>&nbsp;<span style="color: ${runner.member.color};">천타버스 나가 줄 수 있어?</span>`;
+                midbossAlert.classList.remove('hidden');
+
+                const closeupPos = new THREE.Vector3(runner.laneX + 4, 5, runner.position + 8);
+                const closeupLookAt = new THREE.Vector3(runner.laneX, 2, runner.position);
+                
+                const startPos = camera.position.clone();
+                const startLookAt = camera.lookAtVector ? camera.lookAtVector.clone() : new THREE.Vector3();
+                const duration = 500;
+                const animStart = performance.now();
+
+                function animateCloseup() {
+                    const elapsed = performance.now() - animStart;
+                    const progress = Math.min(elapsed / duration, 1);
+                    camera.position.lerpVectors(startPos, closeupPos, progress);
+                    const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, closeupLookAt, progress);
+                    camera.lookAtVector = currentLookAt;
+                    camera.lookAt(currentLookAt);
+                    renderer.render(scene, camera);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animateCloseup);
+                    } else {
+                        const pushDistance = 30 + Math.random() * 20;
+                        const targetPosition = Math.max(0, runner.position - pushDistance);
+                        
+                        runner.isPushedBack = true;
+                        runner.pushBackTarget = targetPosition;
+                        runner.pushBackStartPos = runner.position;
+                        runner.pushBackProgress = 0;
+                        
+                        const pushDuration = 1000;
+                        const pushStart = performance.now();
+                        
+                        function animatePushBack() {
+                            const elapsed = performance.now() - pushStart;
+                            const progress = Math.min(elapsed / pushDuration, 1);
+                            const eased = 1 - Math.pow(1 - progress, 3);
+                            
+                            runner.position = runner.pushBackStartPos + (runner.pushBackTarget - runner.pushBackStartPos) * eased;
+                            runner.mesh.position.z = runner.position;
+                            
+                            runner.mesh.rotation.z = Math.sin(progress * Math.PI * 4) * 0.3 * (1 - progress);
+                            
+                            const newLookAt = new THREE.Vector3(runner.laneX, 2, runner.position);
+                            camera.lookAtVector = newLookAt;
+                            camera.lookAt(newLookAt);
+                            camera.position.z = runner.position + 8;
+                            
+                            renderer.render(scene, camera);
+                            
+                            if (progress < 1) {
+                                requestAnimationFrame(animatePushBack);
+                            } else {
+                                runner.isPushedBack = false;
+                                runner.mesh.rotation.z = 0;
+                                
+                                setTimeout(() => {
+                                    midbossAlert.classList.add('hidden');
+                                    pushIndex++;
+                                    setTimeout(pushNextRunner, 500);
+                                }, 500);
+                            }
+                        }
+                        animatePushBack();
                     }
                 }
+                animateCloseup();
+            }
+
+            pushNextRunner();
+        }
+
+        function executeJongYangEffect() {
+            const eligibleRunners = runners.filter(r => r.member.name !== '천양' && !r.finished);
+            if (eligibleRunners.length === 0) {
+                finishMidBossEvent();
+                return;
+            }
+
+            const numToShield = Math.max(1, Math.ceil(eligibleRunners.length / 2));
+            const shuffled = [...eligibleRunners].sort(() => Math.random() - 0.5);
+            const targetRunners = shuffled.slice(0, numToShield);
+
+            const midbossAlert = document.getElementById('midbossAlert');
+            const names = targetRunners.map(r => `<span style="color: ${r.member.color};">${r.member.name}</span>`).join('&nbsp;');
+            midbossAlert.querySelector('div').innerHTML = `${names}&nbsp;<span style="color: #d1d5db;">보호막 획득!</span>`;
+            midbossAlert.classList.remove('hidden');
+
+            targetRunners.forEach(runner => {
+                runner.hasShield = true;
+                runner.shieldCharges = 3;
+                runner.shieldMeshes = [];
+                runner.shieldProcessedObs = new Set();
+
+                for (let i = 0; i < 3; i++) {
+                    const radius = 2 + (i * 0.4);
+                    const shieldGeom = new THREE.SphereGeometry(radius, 16, 16);
+                    const opacity = 0.25 - (i * 0.05);
+                    const shieldMat = new THREE.MeshBasicMaterial({
+                        color: 0x00ffff,
+                        transparent: true,
+                        opacity: opacity,
+                        side: THREE.DoubleSide
+                    });
+                    const shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+                    shieldMesh.position.y = 1.5;
+                    runner.mesh.add(shieldMesh);
+                    runner.shieldMeshes.push(shieldMesh);
+                }
                 
-                const selected = selectedWeights[selectedIndex].runner;
-                sprintRunners.push(selected);
-                
-                selectedWeights.splice(selectedIndex, 1);
+                shieldedRunners.add(runner.member.id);
+            });
+
+            setTimeout(() => {
+                midbossAlert.classList.add('hidden');
+                finishMidBossEvent();
+            }, 2000);
+        }
+
+        function executeThunderEffect() {
+            const activeRunners = runners.filter(r => !r.finished);
+            if (activeRunners.length === 0) {
+                finishMidBossEvent();
+                return;
+            }
+
+            const immuneRunner = activeRunners[Math.floor(Math.random() * activeRunners.length)];
+            const targetRunners = activeRunners.filter(r => r !== immuneRunner);
+
+            const flash = document.getElementById('lightningFlash');
+            flash.classList.remove('hidden');
+            setTimeout(() => flash.classList.add('hidden'), 100);
+
+            const midbossAlert = document.getElementById('midbossAlert');
+            midbossAlert.querySelector('div').innerHTML = `<span style="color: ${immuneRunner.member.color};">${immuneRunner.member.name}</span>&nbsp;<span style="color: #d1d5db;">제외 전원 감전!</span>`;
+            midbossAlert.classList.remove('hidden');
+
+            targetRunners.forEach(runner => {
+                runner.isElectrocuted = true;
+                runner.electrocuteTimer = 180;
+                runner.speed = runner.baseSpeed * 0.3;
+                electrocutedRunners.add(runner.member.id);
+
+                createLightningEffect(runner);
+            });
+
+            setTimeout(() => {
+                midbossAlert.classList.add('hidden');
+                finishMidBossEvent();
+            }, 2000);
+        }
+
+        function createLightningEffect(runner) {
+            const lightningGroup = new THREE.Group();
+            
+            const boltSegments = 8;
+            const boltHeight = 10;
+            const points = [];
+            let currentX = 0;
+            let currentZ = 0;
+            
+            for (let i = 0; i <= boltSegments; i++) {
+                const y = boltHeight - (i / boltSegments) * boltHeight;
+                if (i > 0 && i < boltSegments) {
+                    currentX += (Math.random() - 0.5) * 1.5;
+                    currentZ += (Math.random() - 0.5) * 1.5;
+                }
+                points.push(new THREE.Vector3(currentX, y, currentZ));
             }
             
-            sprintRunners.forEach(runner => {
-                runner.isSprinting = true;
-                runner.ultimateActive = true;
-                runner.sprintSpeed = runner.speed * (1.4 + Math.random() * 0.5);
-                
-                addSprintVisualEffects(runner);
+            const curve = new THREE.CatmullRomCurve3(points);
+            const tubeGeometry = new THREE.TubeGeometry(curve, 20, 0.15, 8, false);
+            const tubeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00, 
+                transparent: true, 
+                opacity: 0.9 
             });
+            const mainBolt = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            lightningGroup.add(mainBolt);
             
-            const mainSprintColor = sprintRunners[0].member.color;
-            const sprintNames = sprintRunners.map(r => r.member.name).join(', ');
-            showUltimate(`${sprintNames} 전력 질주!`, mainSprintColor);
+            const glowGeometry = new THREE.TubeGeometry(curve, 20, 0.4, 8, false);
+            const glowMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffffaa, 
+                transparent: true, 
+                opacity: 0.3 
+            });
+            const glowBolt = new THREE.Mesh(glowGeometry, glowMaterial);
+            lightningGroup.add(glowBolt);
             
-            createWindEffect();
+            for (let i = 0; i < 3; i++) {
+                const branchStart = Math.floor(Math.random() * (boltSegments - 2)) + 1;
+                const branchPoints = [];
+                const startPoint = points[branchStart];
+                branchPoints.push(startPoint.clone());
+                
+                let bx = startPoint.x;
+                let bz = startPoint.z;
+                for (let j = 1; j <= 3; j++) {
+                    bx += (Math.random() - 0.5) * 2;
+                    bz += (Math.random() - 0.5) * 2;
+                    const by = startPoint.y - j * 0.8;
+                    branchPoints.push(new THREE.Vector3(bx, by, bz));
+                }
+                
+                if (branchPoints.length >= 2) {
+                    const branchCurve = new THREE.CatmullRomCurve3(branchPoints);
+                    const branchGeom = new THREE.TubeGeometry(branchCurve, 10, 0.08, 6, false);
+                    const branchMat = new THREE.MeshBasicMaterial({ 
+                        color: 0xffff66, 
+                        transparent: true, 
+                        opacity: 0.7 
+                    });
+                    const branch = new THREE.Mesh(branchGeom, branchMat);
+                    lightningGroup.add(branch);
+                }
+            }
             
+            const sparkGeom = new THREE.SphereGeometry(0.3, 8, 8);
+            const sparkMat = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff, 
+                transparent: true, 
+                opacity: 0.8 
+            });
+            for (let i = 0; i < 5; i++) {
+                const spark = new THREE.Mesh(sparkGeom, sparkMat.clone());
+                spark.position.set(
+                    (Math.random() - 0.5) * 2,
+                    0.5 + Math.random(),
+                    (Math.random() - 0.5) * 2
+                );
+                spark.scale.setScalar(0.3 + Math.random() * 0.5);
+                lightningGroup.add(spark);
+            }
+            
+            lightningGroup.position.y = 2;
+            runner.mesh.add(lightningGroup);
+            runner.lightningMesh = lightningGroup;
+        }
+
+        function finishMidBossEvent() {
+            midBossActive = false;
+            isPaused = false;
+        }
+
+        function updateShieldsAndElectrocution(delta) {
+            runners.forEach(runner => {
+                if (runner.hasShield) {
+                    if (runner.shieldCharges <= 0) {
+                        runner.hasShield = false;
+                        runner.shieldMeshes.forEach(mesh => {
+                            runner.mesh.remove(mesh);
+                            mesh.geometry.dispose();
+                            mesh.material.dispose();
+                        });
+                        runner.shieldMeshes = [];
+                        shieldedRunners.delete(runner.member.id);
+                    } else {
+                        runner.shieldMeshes.forEach((mesh, index) => {
+                            if (index < runner.shieldCharges) {
+                                mesh.visible = true;
+                                mesh.rotation.y += delta * (2 + index * 0.5);
+                                mesh.material.opacity = (0.25 - (index * 0.05)) + Math.sin(gameTime * 5) * 0.05;
+                            } else {
+                                mesh.visible = false;
+                            }
+                        });
+                    }
+                }
+
+                if (runner.isElectrocuted) {
+                    runner.electrocuteTimer -= delta * 60;
+                    if (runner.electrocuteTimer <= 0) {
+                        runner.isElectrocuted = false;
+                        runner.speed = runner.baseSpeed;
+                        if (runner.lightningMesh) {
+                            runner.mesh.remove(runner.lightningMesh);
+                            runner.lightningMesh.traverse(child => {
+                                if (child.geometry) child.geometry.dispose();
+                                if (child.material) child.material.dispose();
+                            });
+                            runner.lightningMesh = null;
+                        }
+                        electrocutedRunners.delete(runner.member.id);
+                    } else if (runner.lightningMesh) {
+                        runner.lightningMesh.visible = Math.random() > 0.2;
+                        runner.lightningMesh.rotation.y += delta * 15;
+                        
+                        const scale = 0.8 + Math.random() * 0.4;
+                        runner.lightningMesh.scale.set(scale, 1, scale);
+                        
+                        runner.lightningMesh.children.forEach((child, index) => {
+                            if (index > 2) {
+                                child.position.x += (Math.random() - 0.5) * 0.2;
+                                child.position.z += (Math.random() - 0.5) * 0.2;
+                                child.material.opacity = 0.5 + Math.random() * 0.5;
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        function triggerSprintPhase() {
+            if (sprintPhaseStarted || ultimateUsed || !sprintEnabled) return;
+            sprintPhaseStarted = true; ultimateUsed = true; ultimateActive = true;
+            isPaused = true;
+
+            const activeRunners = runners.filter(r => !r.finished);
+            if (activeRunners.length === 0) return;
+
+            const sortedByPosition = [...activeRunners].sort((a, b) => b.position - a.position);
+            const weights = [];
+            const totalRunners = sortedByPosition.length;
+            sortedByPosition.forEach((runner, index) => { weights.push({ runner, weight: Math.pow(index + 1, 2) }); });
+
+            let randomValue = Math.random() * weights.reduce((sum, item) => sum + item.weight, 0);
+            let selectedIndex = 0;
+            for (let j = 0; j < weights.length; j++) { randomValue -= weights[j].weight; if (randomValue <= 0) { selectedIndex = j; break; } }
+            const mainSprintRunner = weights[selectedIndex].runner;
+            sprintRunners = [mainSprintRunner];
+            
+            const mainSprintColor = mainSprintRunner.member.color;
+
+            document.getElementById('sprintSplitOverlay').classList.add('active');
+            const characterDisplay = document.getElementById('sprintCharacterDisplay');
+            
+            characterDisplay.innerHTML = `
+                <img id="sprintCharacterImage" class="sprint-character-image" src="${mainSprintRunner.member.imgPng}" alt="스프린트 캐릭터">
+                <div id="sprintCharacterText" class="sprint-character-text" style="color: ${mainSprintColor};">${mainSprintRunner.member.name} 막판 스퍼트!</div>
+            `;
+            
+            characterDisplay.classList.add('active');
+
+            if (bgm) { bgm.volume = bgm.volume * 0.3; }
+
             setTimeout(() => {
-                showEvent(`${sprintNames} 스프린트!`, 'sprint', mainSprintColor, 2000);
-            }, 1500);
-            
-            setTimeout(() => {
+                isPaused = false;
+                document.getElementById('sprintSplitOverlay').classList.remove('active');
+                document.getElementById('sprintCharacterDisplay').classList.remove('active');
+                
+                characterDisplay.innerHTML = `
+                    <img id="sprintCharacterImage" class="sprint-character-image" src="" alt="스프린트 캐릭터">
+                    <div id="sprintCharacterText" class="sprint-character-text"></div>
+                `;
+                
+                document.getElementById('sprintScreenEffect').classList.remove('hidden');
+                document.getElementById('sprintSpeedLines').classList.remove('hidden');
+                document.getElementById('sprintWindEffect').classList.remove('hidden');
+
+                if (bgm) bgm.volume = isMuted ? 0 : currentVolume;
+
                 sprintRunners.forEach(runner => {
-                    runner.isSprinting = false;
-                    runner.ultimateActive = false;
-                    runner.speed = runner.baseSpeed;
-                    
-                    removeSprintVisualEffects(runner);
+                    runner.isSprinting = true; runner.ultimateActive = true;
+                    const leaderPos = runners.reduce((max, r) => Math.max(max, r.position), 0);
+                    const distToLeader = leaderPos - runner.position;
+                    let boostFactor = 1.2 + (distToLeader / 10) * 0.15;
+                    boostFactor = Math.min(boostFactor, 1.6);
+                    runner.sprintSpeed = runner.speed * boostFactor;
+                    addSprintVisualEffects(runner);
                 });
-                ultimateActive = false;
-                document.getElementById('ultimateAlert').classList.add('hidden');
-                document.getElementById('sprintScreenEffect').classList.add('hidden');
-                document.getElementById('sprintSpeedLines').classList.add('hidden');
-                document.getElementById('sprintWindEffect').classList.add('hidden');
-            }, 5000);
+
+                showUltimate(`${mainSprintRunner.member.name} 막판 스퍼트!`, mainSprintColor);
+                createWindEffect();
+
+            }, 1500);
         }
 
         function createWindEffect() {
             const windContainer = document.getElementById('sprintWindEffect');
             windContainer.innerHTML = '';
-            
             const numLines = 12;
             for (let i = 0; i < numLines; i++) {
-                const line = document.createElement('div');
-                line.className = 'wind-line';
-                
-                const topPos = Math.random() * 100;
-                const delay = Math.random() * 2;
-                const duration = 0.2 + Math.random() * 0.3;
-                const opacity = 0.2 + Math.random() * 0.4;
+                const line = document.createElement('div'); line.className = 'wind-line';
+                const topPos = Math.random() * 100; const delay = Math.random() * 2;
+                const duration = 0.2 + Math.random() * 0.3; const opacity = 0.2 + Math.random() * 0.4;
                 const height = 1 + Math.random() * 3;
-                
-                line.style.top = `${topPos}%`;
-                line.style.left = '100%';
-                line.style.width = `${20 + Math.random() * 40}px`;
-                line.style.height = `${height}px`;
-                line.style.opacity = opacity;
-                line.style.animationDelay = `${delay}s`;
+                line.style.top = `${topPos}%`; line.style.left = '100%';
+                line.style.width = `${20 + Math.random() * 40}px`; line.style.height = `${height}px`;
+                line.style.opacity = opacity; line.style.animationDelay = `${delay}s`;
                 line.style.animationDuration = `${duration}s`;
-                
                 windContainer.appendChild(line);
             }
         }
@@ -1495,36 +1462,18 @@
         function addSprintVisualEffects(runner) {
             const effectGroup = new THREE.Group();
             const color = new THREE.Color(runner.member.color);
-
-            const trailCount = 5;
-            const trails = [];
-            const trailMat = new THREE.MeshBasicMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.8,
-                blending: THREE.AdditiveBlending,
-                side: THREE.DoubleSide,
-                depthWrite: false
-            });
-
+            const trailCount = 5; const trails = [];
+            const trailMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
             for (let i = 0; i < trailCount; i++) {
                 const angle = (i / trailCount) * Math.PI * 2;
                 const radius = 1.2 + Math.random() * 0.5;
                 const trail = new THREE.Mesh(sharedGeometries.trailPlane, trailMat.clone());
-                trail.position.set(
-                    Math.cos(angle) * radius,
-                    1.2 + Math.sin(angle) * 0.8,
-                    -3
-                );
-                trail.scale.y = 6 + Math.random() * 4;
-                trail.rotation.x = Math.PI / 2;
+                trail.position.set(Math.cos(angle) * radius, 1.2 + Math.sin(angle) * 0.8, -3);
+                trail.scale.y = 6 + Math.random() * 4; trail.rotation.x = Math.PI / 2;
                 trail.userData = { angle, radius, baseZ: -3, phase: Math.random() * Math.PI * 2 };
-                effectGroup.add(trail);
-                trails.push(trail);
+                effectGroup.add(trail); trails.push(trail);
             }
-
-            const particleCount = 15;
-            const particlePositions = new Float32Array(particleCount * 3);
+            const particleCount = 15; const particlePositions = new Float32Array(particleCount * 3);
             const particleVelocities = [];
             for (let i = 0; i < particleCount; i++) {
                 particlePositions[i * 3] = (Math.random() - 0.5) * 2.5;
@@ -1534,67 +1483,34 @@
             }
             const particleGeom = new THREE.BufferGeometry();
             particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-            const particleMat = new THREE.PointsMaterial({
-                color: 0xffffff,
-                size: 0.2,
-                transparent: true,
-                opacity: 0.9,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false
-            });
-            const particles = new THREE.Points(particleGeom, particleMat);
-            effectGroup.add(particles);
-
-            const ringMat = new THREE.MeshBasicMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.4,
-                blending: THREE.AdditiveBlending,
-                side: THREE.DoubleSide,
-                depthWrite: false
-            });
+            const particleMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+            const particles = new THREE.Points(particleGeom, particleMat); effectGroup.add(particles);
+            const ringMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
             const ring = new THREE.Mesh(sharedGeometries.boostRing, ringMat);
-            ring.rotation.x = -Math.PI / 2;
-            ring.position.y = 0.1;
-            ring.userData = { scale: 1, opacity: 0.4 };
-            effectGroup.add(ring);
-
+            ring.rotation.x = -Math.PI / 2; ring.position.y = 0.1;
+            ring.userData = { scale: 1, opacity: 0.4 }; effectGroup.add(ring);
             runner.mesh.add(effectGroup);
-
-            runner.sprintEffects = {
-                effectGroup,
-                trails,
-                particles,
-                particleVelocities,
-                ring,
-                time: 0
-            };
+            runner.sprintEffects = { effectGroup, trails, particles, particleVelocities, ring, time: 0 };
         }
 
         function removeSprintVisualEffects(runner) {
             if (runner.sprintEffects) {
                 runner.mesh.remove(runner.sprintEffects.effectGroup);
-                
                 runner.sprintEffects.trails.forEach(t => { t.material.dispose(); });
                 runner.sprintEffects.particles.geometry.dispose();
                 runner.sprintEffects.particles.material.dispose();
                 runner.sprintEffects.ring.material.dispose();
-                
                 runner.sprintEffects = null;
             }
         }
 
         function updateSprintEffects(runner, delta) {
             if (!runner.sprintEffects) return;
-            
-            const effects = runner.sprintEffects;
-            effects.time += delta;
-
+            const effects = runner.sprintEffects; effects.time += delta;
             effects.trails.forEach((trail) => {
                 const pulse = 0.5 + Math.sin(effects.time * 8 + trail.userData.phase) * 0.3;
                 trail.material.opacity = pulse;
             });
-
             const positions = effects.particles.geometry.attributes.position.array;
             for (let i = 0; i < effects.particleVelocities.length; i++) {
                 positions[i * 3 + 2] += effects.particleVelocities[i].z * delta * 3;
@@ -1605,144 +1521,98 @@
                 }
             }
             effects.particles.geometry.attributes.position.needsUpdate = true;
-
-            effects.ring.userData.scale += delta * 4;
-            effects.ring.userData.opacity -= delta * 0.8;
-            if (effects.ring.userData.opacity <= 0) {
-                effects.ring.userData.scale = 1;
-                effects.ring.userData.opacity = 0.5;
-            }
+            effects.ring.userData.scale += delta * 4; effects.ring.userData.opacity -= delta * 0.8;
+            if (effects.ring.userData.opacity <= 0) { effects.ring.userData.scale = 1; effects.ring.userData.opacity = 0.5; }
             effects.ring.scale.set(effects.ring.userData.scale, effects.ring.userData.scale, 1);
             effects.ring.material.opacity = Math.max(0, effects.ring.userData.opacity);
         }
 
         function updateRunners(delta) {
             if (!raceStarted) return;
-            
+            if (isPaused) return;
             if (raceEnded) {
                 runners.forEach(runner => {
-                    const animSpeed = 5;
-                    runner.animPhase += delta * animSpeed;
+                    const animSpeed = 5; runner.animPhase += delta * animSpeed;
                     const armSwing = Math.sin(runner.animPhase) * 0.2;
                     const legSwing = Math.sin(runner.animPhase) * 0.1;
-
-                    runner.leftArm.rotation.x = armSwing;
-                    runner.rightArm.rotation.x = -armSwing;
-                    runner.leftLeg.rotation.x = -legSwing;
-                    runner.rightLeg.rotation.x = legSwing;
-                    
-                    if (!runner.isJumping) {
-                        runner.mesh.position.y = Math.abs(Math.sin(runner.animPhase * 2)) * 0.05;
-                    }
+                    runner.leftArm.rotation.x = armSwing; runner.rightArm.rotation.x = -armSwing;
+                    runner.leftLeg.rotation.x = -legSwing; runner.rightLeg.rotation.x = legSwing;
+                    if (!runner.isJumping) runner.mesh.position.y = Math.abs(Math.sin(runner.animPhase * 2)) * 0.05;
                 });
                 return;
             }
-
             const effectiveDelta = delta * slowMotionFactor;
             gameTime += effectiveDelta;
-            
+
+            updateShieldsAndElectrocution(effectiveDelta);
+
             const leader = runners.reduce((a, b) => (a.position > b.position ? a : b));
             const leaderProgress = leader.position / trackLength;
-            
-            if (leaderProgress > 0.80 && !sprintPhaseStarted && !ultimateUsed && sprintEnabled) {
-                triggerSprintPhase();
-            }
+            if (leaderProgress > 0.80 && !sprintPhaseStarted && !ultimateUsed && sprintEnabled) triggerSprintPhase();
 
             runners.forEach(runner => {
                 runner.nameMesh.position.z = runner.position - 8;
-
                 if (runner.isJumping) {
                     runner.jumpPhase += effectiveDelta * 15;
-                    if (runner.jumpPhase < Math.PI) {
-                        runner.jumpHeight = Math.sin(runner.jumpPhase) * 2.5;
-                        runner.mesh.position.y = runner.jumpHeight;
-                    } else {
-                        runner.isJumping = false;
-                        runner.jumpHeight = 0;
-                        runner.mesh.position.y = 0;
-                    }
+                    if (runner.jumpPhase < Math.PI) { runner.jumpHeight = Math.sin(runner.jumpPhase) * 2.5; runner.mesh.position.y = runner.jumpHeight; }
+                    else { runner.isJumping = false; runner.jumpHeight = 0; runner.mesh.position.y = 0; }
                 }
-
                 if (!runner.finished) {
                     obstacles.forEach(obs => {
                         const distanceToObs = obs.zPos - runner.position;
-                        
                         if (obs.lane === runner.lane && Math.abs(distanceToObs) < 2.5) {
                             if (obs.type === 'hurdle' && !runner.isJumping && runner.slowdownTimer <= 0) {
                                 if (distanceToObs > 0 && distanceToObs < 2) {
-                                    runner.isJumping = true;
-                                    runner.jumpPhase = 0;
-                                    
-                                    const baseSuccessRate = 0.5;
-                                    const bonusFromFails = runner.hurdleFailCount * 0.15;
-                                    const successRate = Math.min(0.95, baseSuccessRate + bonusFromFails);
-                                    
-                                    if (Math.random() < successRate) {
-                                        showEvent(`${runner.member.name} 점프 성공!`, 'hurdle', runner.member.color, 1000);
-                                        runner.hurdleFailCount = 0;
-                                    } else {
-                                        runner.slowdownTimer = 12;
-                                        showEvent(`${runner.member.name} 허들 넘어짐!`, 'hurdle', runner.member.color);
-                                        runner.tiltPhase = 0;
-                                        runner.hurdleFailCount++;
+                                    if (runner.hasShield && runner.shieldCharges > 0) {
+                                        if (!runner.shieldProcessedObs.has(obs.obsId)) {
+                                            runner.shieldProcessedObs.add(obs.obsId);
+                                            runner.shieldCharges--;
+                                            runner.hurdleFailCount = 0;
+                                        }
+                                    } else if (!runner.hasShield) {
+                                        runner.isJumping = true; runner.jumpPhase = 0;
+                                        const baseSuccessRate = 0.5; const bonusFromFails = runner.hurdleFailCount * 0.15;
+                                        const successRate = Math.min(0.95, baseSuccessRate + bonusFromFails);
+                                        if (Math.random() < successRate) runner.hurdleFailCount = 0;
+                                        else { runner.slowdownTimer = 12; runner.tiltPhase = 0; runner.hurdleFailCount++; }
                                     }
                                 }
                             } else if (obs.type === 'gravel' && runner.slowdownTimer <= 0 && !runner.isJumping) {
                                 if (Math.abs(distanceToObs) < 2) {
-                                    runner.slowdownTimer = 25;
-                                    runner.speed *= 0.8;
-                                    showEvent(`${runner.member.name} 자갈밭 감속!`, 'gravel', runner.member.color);
-                                    runner.tiltPhase = 0;
+                                    if (runner.hasShield && runner.shieldCharges > 0) {
+                                        if (!runner.shieldProcessedObs.has(obs.obsId)) {
+                                            runner.shieldProcessedObs.add(obs.obsId);
+                                            runner.shieldCharges--;
+                                        }
+                                    } else if (!runner.hasShield) {
+                                        runner.slowdownTimer = 25; runner.speed *= 0.8; runner.tiltPhase = 0; 
+                                    }
                                 }
                             } else if (obs.type === 'boost' && runner.speedBoostTimer <= 0 && !runner.isJumping) {
-                                if (Math.abs(distanceToObs) < 1.5) {
-                                    runner.speedBoostTimer = 40;
-                                    runner.speed *= 1.5;
-                                    showEvent(`${runner.member.name} 속도 UP!`, 'boost', runner.member.color, 1000);
-                                }
+                                if (Math.abs(distanceToObs) < 1.5) { runner.speedBoostTimer = 40; runner.speed *= 1.5; }
                             }
                         }
                     });
                 }
-
                 if (runner.slowdownTimer > 0) {
                     runner.slowdownTimer -= effectiveDelta * 60;
-                    if (runner.slowdownTimer <= 0) {
-                        runner.speed = runner.baseSpeed;
-                        if (runner.isSprinting) {
-                            runner.speed = runner.sprintSpeed;
-                        }
-                    }
+                    if (runner.slowdownTimer <= 0) { runner.speed = runner.baseSpeed; if (runner.isSprinting) runner.speed = runner.sprintSpeed; }
                 }
-
                 if (runner.speedBoostTimer > 0) {
                     runner.speedBoostTimer -= effectiveDelta * 60;
-                    if (runner.speedBoostTimer <= 0) {
-                        runner.speed = runner.baseSpeed;
-                        if (runner.isSprinting) {
-                            runner.speed = runner.sprintSpeed;
-                        }
-                    }
+                    if (runner.speedBoostTimer <= 0) { runner.speed = runner.baseSpeed; if (runner.isSprinting) runner.speed = runner.sprintSpeed; }
                 }
-
                 let currentSpeed = runner.speed;
-                if (runner.isSprinting && runner.slowdownTimer <= 0 && runner.speedBoostTimer <= 0) {
-                    currentSpeed = runner.sprintSpeed;
-                }
-
-                if (runner.slowdownTimer > 0 && runner.slowdownTimer < 12) {
-                } else if (!runner.isJumping) {
-                    runner.position += currentSpeed * effectiveDelta;
-                } else {
-                    runner.position += currentSpeed * effectiveDelta * 0.8;
-                }
+                if (runner.isSprinting && runner.slowdownTimer <= 0 && runner.speedBoostTimer <= 0) currentSpeed = runner.sprintSpeed;
+                if (runner.isElectrocuted) currentSpeed = runner.baseSpeed * 0.3;
+                if (!runner.isJumping && !runner.isPushedBack) runner.position += currentSpeed * effectiveDelta;
+                else if (!runner.isPushedBack) runner.position += currentSpeed * effectiveDelta * 0.8;
                 runner.mesh.position.z = runner.position;
 
                 if (!runner.finished && runner.position >= trackLength) {
-                    runner.finished = true;
-                    runner.finishTime = gameTime;
-                    runner.isSprinting = false;
-                    runner.ultimateActive = false;
+                    runner.finished = true; runner.finishTime = gameTime;
+                    runner.isSprinting = false; runner.ultimateActive = false;
+                    removeSprintVisualEffects(runner);
                     finishedRunners.push(runner);
                 }
 
@@ -1750,216 +1620,140 @@
                 runner.animPhase += effectiveDelta * animSpeed;
                 const armSwing = Math.sin(runner.animPhase) * 0.8;
                 const legSwing = Math.sin(runner.animPhase) * 0.3;
-
-                runner.leftArm.rotation.x = armSwing;
-                runner.rightArm.rotation.x = -armSwing;
-                runner.leftLeg.rotation.x = -legSwing;
-                runner.rightLeg.rotation.x = legSwing;
-                
-                if (!runner.isJumping) {
-                    runner.mesh.position.y = Math.abs(Math.sin(runner.animPhase * 2)) * 0.15;
-                }
-                
+                runner.leftArm.rotation.x = armSwing; runner.rightArm.rotation.x = -armSwing;
+                runner.leftLeg.rotation.x = -legSwing; runner.rightLeg.rotation.x = legSwing;
+                if (!runner.isJumping) runner.mesh.position.y = Math.abs(Math.sin(runner.animPhase * 2)) * 0.15;
                 if (runner.slowdownTimer > 0) {
                     runner.tiltPhase += effectiveDelta * 60;
-                    const tilt = Math.sin(runner.tiltPhase * 0.2) * 0.5;
-                    runner.mesh.rotation.z = tilt;
-                } else {
-                    runner.mesh.rotation.z = 0;
-                }
-                
-                if (runner.isSprinting && runner.sprintEffects) {
-                    updateSprintEffects(runner, effectiveDelta);
-                }
+                    const tilt = Math.sin(runner.tiltPhase * 0.2) * 0.5; runner.mesh.rotation.z = tilt;
+                } else if (!runner.isPushedBack) runner.mesh.rotation.z = 0;
+                if (runner.isSprinting && runner.sprintEffects) updateSprintEffects(runner, effectiveDelta);
             });
         }
 
         function updateCamera() {
             if (startingSequence) return;
-            
+            if (isPaused && !midBossActive) return;
+            if (midBossActive) {
+                renderer.render(scene, camera);
+                return;
+            }
             const sortedRunners = [...runners].sort((a, b) => b.position - a.position);
             const leader = sortedRunners[0];
             const second = sortedRunners.length > 1 ? sortedRunners[1] : null;
             const progress = leader.position / trackLength;
-
             const sprintingRunners = runners.filter(r => r.isSprinting);
-
             if (!gapMode && progress > 0.94 && finishedRunners.length < passCount) {
-                if (!slowMotion) {
-                    slowMotion = true;
-                    slowMotionFactor = 0.7;
-                    currentCameraMode = 'finish';
-                }
+                if (!slowMotion) { slowMotion = true; slowMotionFactor = 0.7; currentCameraMode = 'finish'; }
             }
-
             if (!gapMode && currentCameraMode !== 'finish') {
                 cameraChangeTimer += 1 / 60;
                 if (cameraChangeTimer > 4 && !slowMotion) {
                     cameraChangeTimer = 0;
-                    const modes = ['overview', 'side', 'front'];
-                    currentCameraMode = modes[Math.floor(Math.random() * modes.length)];
+                    const allModes = ['overview', 'side', 'front'];
+                    const availableModes = allModes.filter(mode => mode !== currentCameraMode);
+                    currentCameraMode = availableModes[Math.floor(Math.random() * availableModes.length)];
                 }
             }
-
             const targetPos = new THREE.Vector3();
             const lookAtPos = new THREE.Vector3();
-
-            let primaryTarget = leader;
-            let secondaryTarget = second;
-            
+            let primaryTarget = leader; let secondaryTarget = second;
             if (sprintingRunners.length > 0 && !gapMode) {
                 primaryTarget = sprintingRunners[0];
-                if (sprintingRunners.length > 1) {
-                    secondaryTarget = sprintingRunners[1];
-                } else if (sprintingRunners[0] !== leader) {
-                    secondaryTarget = leader;
-                } else {
-                    secondaryTarget = second;
-                }
+                if (sprintingRunners.length > 1) secondaryTarget = sprintingRunners[1];
+                else if (sprintingRunners[0] !== leader) secondaryTarget = leader;
+                else secondaryTarget = second;
             }
-
             const selectedArray = Array.from(selectedMembers);
             const laneCount = selectedArray.length;
             const laneWidth = 6;
             const trackWidth = laneCount * laneWidth;
-
             camera.up.set(0, 1, 0);
-
             if (gapMode && gapRunnerA && gapRunnerB) {
                 const midX = (gapRunnerA.laneX + gapRunnerB.laneX) / 2;
                 const midZ = (gapRunnerA.position + gapRunnerB.position) / 2;
-                
                 const gapDistance = Math.abs(gapRunnerA.position - gapRunnerB.position);
                 const laneDistance = Math.abs(gapRunnerA.laneX - gapRunnerB.laneX);
-                
                 const sideDistance = Math.max(30, 20 + laneDistance * 0.8 + gapDistance * 0.5);
-                
-                targetPos.set(midX + sideDistance, 15, midZ);
-                lookAtPos.set(midX, 2, midZ);
+                targetPos.set(midX + sideDistance, 15, midZ); lookAtPos.set(midX, 2, midZ);
             } else {
                 switch (currentCameraMode) {
                     case 'overview':
                         targetPos.set(25, 40, primaryTarget.position - 25);
-                        lookAtPos.set(5, 0, primaryTarget.position);
-                        break;
-                    case 'side':
-                        {
-                            const camY = 10;
-                            if (secondaryTarget && secondaryTarget !== primaryTarget) {
-                                const midZ = (primaryTarget.position + secondaryTarget.position) / 2;
-                                const laneDistance = Math.abs(primaryTarget.laneX - secondaryTarget.laneX);
-                                const sideDistance = Math.max(trackWidth * 0.7, 35 + laneDistance * 0.5);
-                                
-                                targetPos.set(sideDistance, camY, midZ);
-                                lookAtPos.set(0, 2, midZ);
-                            } else {
-                                const sideDistance = Math.max(trackWidth * 0.7, 35);
-                                targetPos.set(sideDistance, camY, primaryTarget.position);
-                                lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
-                            }
+                        lookAtPos.set(5, 0, primaryTarget.position); break;
+                    case 'side': {
+                        const camY = 10;
+                        if (secondaryTarget && secondaryTarget !== primaryTarget) {
+                            const midZ = (primaryTarget.position + secondaryTarget.position) / 2;
+                            const laneDistance = Math.abs(primaryTarget.laneX - secondaryTarget.laneX);
+                            const sideDistance = Math.max(trackWidth * 0.7, 35 + laneDistance * 0.5);
+                            targetPos.set(sideDistance, camY, midZ); lookAtPos.set(0, 2, midZ);
+                        } else {
+                            const sideDistance = Math.max(trackWidth * 0.7, 35);
+                            targetPos.set(sideDistance, camY, primaryTarget.position);
+                            lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
                         }
-                        break;
-                    case 'front':
-                        {
-                            const camY = 6;
-                            if (secondaryTarget && secondaryTarget !== primaryTarget) {
-                                const sideDir = primaryTarget.laneX > secondaryTarget.laneX ? 1 : -1;
-                                const sideOffset = 8 * sideDir;
-                                
-                                targetPos.set(primaryTarget.laneX + sideOffset, camY, primaryTarget.position + 25);
-                                lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
-                            } else {
-                                targetPos.set(10, camY, primaryTarget.position + 20);
-                                lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
-                            }
+                    } break;
+                    case 'front': {
+                        const camY = 6;
+                        if (secondaryTarget && secondaryTarget !== primaryTarget) {
+                            const sideDir = primaryTarget.laneX > secondaryTarget.laneX ? 1 : -1;
+                            const sideOffset = 8 * sideDir;
+                            targetPos.set(primaryTarget.laneX + sideOffset, camY, primaryTarget.position + 25);
+                            lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
+                        } else {
+                            targetPos.set(10, camY, primaryTarget.position + 20);
+                            lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
                         }
-                        break;
-                    case 'finish':
-                        {
-                            const camHeight = Math.max(trackWidth * 1.2, 60);
-                            targetPos.set(0, camHeight, trackLength);
-                            lookAtPos.set(0, 0, trackLength);
-                            camera.up.set(-1, 0, 0);
-                        }
-                        break;
+                    } break;
+                    case 'finish': {
+                        const camHeight = Math.max(trackWidth * 1.2, 60);
+                        targetPos.set(0, camHeight, trackLength); lookAtPos.set(0, 0, trackLength);
+                        camera.up.set(-1, 0, 0);
+                    } break;
                 }
             }
-
             if (currentCameraMode !== prevCameraMode && !gapMode) {
                 camera.position.copy(targetPos);
-                if (!camera.lookAtVector) {
-                    camera.lookAtVector = new THREE.Vector3();
-                }
-                camera.lookAtVector.copy(lookAtPos);
-                camera.lookAt(lookAtPos);
+                if (!camera.lookAtVector) camera.lookAtVector = new THREE.Vector3();
+                camera.lookAtVector.copy(lookAtPos); camera.lookAt(lookAtPos);
                 prevCameraMode = currentCameraMode;
             } else {
                 const lerpSpeed = gapMode ? 0.1 : (slowMotion ? 0.08 : 0.06);
-                
                 camera.position.lerp(targetPos, lerpSpeed);
-                
-                if (currentCameraMode !== 'finish') {
-                    camera.position.y = targetPos.y;
-                }
-                
+                if (currentCameraMode !== 'finish') camera.position.y = targetPos.y;
                 if (camera.lookAtVector) {
                     camera.lookAtVector.lerp(lookAtPos, lerpSpeed);
-                    if (currentCameraMode !== 'finish') {
-                        camera.lookAtVector.y = lookAtPos.y;
-                    }
+                    if (currentCameraMode !== 'finish') camera.lookAtVector.y = lookAtPos.y;
                     camera.lookAt(camera.lookAtVector);
-                } else {
-                    camera.lookAtVector = lookAtPos.clone();
-                    camera.lookAt(lookAtPos);
-                }
+                } else { camera.lookAtVector = lookAtPos.clone(); camera.lookAt(lookAtPos); }
             }
         }
 
         function updateRankingPanel() {
             const sortedRunners = [...runners].sort((a, b) => {
                 if (a.finished && b.finished) return a.finishTime - b.finishTime;
-                if (a.finished) return -1;
-                if (b.finished) return 1;
+                if (a.finished) return -1; if (b.finished) return 1;
                 return b.position - a.position;
             });
-
             const rankingList = document.getElementById('rankingList');
             rankingList.innerHTML = '';
-
             sortedRunners.forEach((runner, index) => {
-                const rank = index + 1;
-                const isPass = rank <= passCount;
+                const rank = index + 1; const isPass = rank <= passCount;
                 const isConfirmed = runner.finished && rank <= passCount;
-                
-                if (isConfirmed && !confirmedRanks.has(runner.member.id)) {
-                    confirmedRanks.add(runner.member.id);
-                }
-
-                let iconContent = '';
-                if (confirmedRanks.has(runner.member.id)) {
-                     iconContent = '<span class="crown-icon text-sm">✅</span>';
-                } else if (runner.isSprinting) {
-                     iconContent = '<span class="text-yellow-400">🏃‍➡️</span>';
-                } else if (runner.isJumping) {
-                     iconContent = '<span>🚧</span>';
-                } else if (runner.slowdownTimer > 0) {
-                     iconContent = '<span class="text-orange-400">🪨</span>';
-                } else if (runner.speedBoostTimer > 0) {
-                     iconContent = '<span class="text-green-400">🪽</span>';
-                }
-
+                if (isConfirmed && !confirmedRanks.has(runner.member.id)) confirmedRanks.add(runner.member.id);
                 const div = document.createElement('div');
                 let sprintClass = runner.isSprinting ? 'sprint-effect' : '';
-                
+                let electroClass = runner.isElectrocuted ? 'electrocuted' : '';
                 const displayName = runner.member.name.length === 2 ? runner.member.name + '　' : runner.member.name;
-                
-                div.className = `ranking-item flex items-center gap-1 p-1 rounded text-sm ${isPass ? 'bg-green-900/40' : 'bg-gray-700/40'} ${confirmedRanks.has(runner.member.id) ? 'ranking-item-confirmed' : ''} ${sprintClass}`;
+                div.className = `ranking-item flex items-center gap-1 p-1 rounded-none text-sm ${isPass ? 'bg-green-900/40' : 'bg-gray-700/40'} ${confirmedRanks.has(runner.member.id) ? 'ranking-item-confirmed' : ''} ${sprintClass} ${electroClass}`;
                 div.style.setProperty('color', runner.isSprinting ? runner.member.color : '');
+                
                 div.innerHTML = `
                     <span class="w-6 text-center font-bold text-sm" style="color: ${runner.member.color}">${rank}</span>
                     <img src="${runner.member.imgPng}" class="w-6 h-6 rounded-full object-cover">
-                    <span class="text-xs font-bold truncate w-auto max-w-[100px] flex-1" style="color: ${runner.member.color}">${displayName}</span>
-                    <span class="w-8 inline-flex justify-center items-center">${iconContent}</span>
+                    <span class="text-xs font-bold truncate" style="color: ${runner.member.color}">${displayName}</span>
+                    <span style="width: 0.5em;"></span>
                 `;
                 rankingList.appendChild(div);
             });
@@ -1969,141 +1763,76 @@
             const alert = document.getElementById('ultimateAlert');
             const textDiv = alert.querySelector('div');
             textDiv.textContent = text;
-            textDiv.style.color = color;
-            textDiv.style.textShadow = 'none';
+            textDiv.style.color = color; textDiv.style.textShadow = 'none';
             alert.classList.remove('hidden');
-        }
-
-        function showEvent(text, type, color = '#22c55e', duration = 1500) {
-            if (ultimateActive && type !== 'sprint') return;
-            
-            const alert = document.getElementById('eventAlert');
-            const textDiv = alert.querySelector('div');
-            
-            let icon = '';
-            switch(type) {
-                case 'hurdle':
-                    icon = `<span style="font-size: 2rem;">🚧</span>`;
-                    break;
-                case 'gravel':
-                    icon = `<span style="font-size: 2rem;">🪨</span>`;
-                    break;
-                case 'boost':
-                    icon = `<span style="font-size: 2rem;">🪽</span>`;
-                    break;
-                case 'sprint':
-                    icon = `<span style="font-size: 2.2rem;">🏃‍➡️</span>`;
-                    break;
-            }
-            
-            textDiv.innerHTML = `${icon}<span style="color: ${color};">${text}</span>`;
-            textDiv.style.gap = '12px';
-            alert.classList.remove('hidden');
-            setTimeout(() => alert.classList.add('hidden'), duration);
         }
 
         function createGapVisuals(runnerA, runnerB) {
-            const frontOffset = 0.7;
-            const topY = 2.9;
-
+            const frontOffset = 0.7; const topY = 2.9;
             const passZ = runnerA.position + frontOffset;
             const failZ = runnerB.position + frontOffset;
             const distance = Math.abs(passZ - failZ);
-
             const lineMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.7 });
             const lineMatBright = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.9 });
-
             const horizontalLength = Math.abs(runnerA.laneX - runnerB.laneX);
             const midX = (runnerA.laneX + runnerB.laneX) / 2;
-
             if (horizontalLength > 0.1) {
                 const hLineGeom = new THREE.CylinderGeometry(0.08, 0.08, horizontalLength, 8);
                 const hLine = new THREE.Mesh(hLineGeom, lineMat);
-                hLine.rotation.z = Math.PI / 2;
-                hLine.position.set(midX, topY, passZ);
-                scene.add(hLine);
+                hLine.rotation.z = Math.PI / 2; hLine.position.set(midX, topY, passZ); scene.add(hLine);
             }
-
             if (distance > 0.01) {
                 const vLineGeom = new THREE.CylinderGeometry(0.08, 0.08, distance, 8);
                 const vLine = new THREE.Mesh(vLineGeom, lineMatBright);
-                vLine.rotation.x = Math.PI / 2;
-                vLine.position.set(runnerB.laneX, topY, (passZ + failZ) / 2);
-                scene.add(vLine);
+                vLine.rotation.x = Math.PI / 2; vLine.position.set(runnerB.laneX, topY, (passZ + failZ) / 2); scene.add(vLine);
             }
-
             const endCapGeom = new THREE.BoxGeometry(3.0, 0.15, 0.15);
-
-            const capTop = new THREE.Mesh(endCapGeom, lineMatBright);
-            capTop.position.set(runnerB.laneX, topY, passZ);
-            scene.add(capTop);
-
-            const capBottom = new THREE.Mesh(endCapGeom, lineMatBright);
-            capBottom.position.set(runnerB.laneX, topY, failZ);
-            scene.add(capBottom);
+            const capTop = new THREE.Mesh(endCapGeom, lineMatBright); capTop.position.set(runnerB.laneX, topY, passZ); scene.add(capTop);
+            const capBottom = new THREE.Mesh(endCapGeom, lineMatBright); capBottom.position.set(runnerB.laneX, topY, failZ); scene.add(capBottom);
 
             const gapAlert = document.getElementById('gapAlert');
             const gapDiv = gapAlert.querySelector('div');
             const distanceText = distance.toFixed(2);
-
-            const closeThreshold = 2;
-            const isClose = distance < closeThreshold;
+            const closeThreshold = 3; const isClose = distance < closeThreshold;
             const titleText = isClose ? '아깝다!' : '아깝지는 않다!';
-            const titleColor = isClose ? 'text-yellow-400' : 'text-gray-400';
-
-            gapDiv.innerHTML = `
-                <div class="text-xl ${titleColor}">${titleText}</div>
-                <div class="text-4xl font-bold text-red-500">${distanceText}m 차이</div>
-            `;
+            const titleColor = isClose ? 'color: #fbbf24;' : 'color: #9ca3af;';
+            gapDiv.innerHTML = `<span style="font-size: 1.5rem; font-weight: bold; ${titleColor}">${titleText}</span><span style="width: 24px;"></span><span style="font-size: 2.5rem; font-weight: bold; color: #ffffff;">${distanceText}m 차이</span>`;
             gapAlert.classList.remove('hidden');
         }
 
         function showFinalGap() {
             const sortedRunners = [...runners].sort((a, b) => {
                 if (a.finished && b.finished) return a.finishTime - b.finishTime;
-                if (a.finished) return -1;
-                if (b.finished) return 1;
+                if (a.finished) return -1; if (b.finished) return 1;
                 return b.position - a.position;
             });
-
             const lastPassRunner = sortedRunners[passCount - 1];
             const firstFailRunner = sortedRunners[passCount];
-
-            if (!firstFailRunner) {
-                gameRunning = false;
-                showResults();
-                return;
-            }
-
-            gapMode = true;
-            gapRunnerA = lastPassRunner;
-            gapRunnerB = firstFailRunner;
-
+            if (!firstFailRunner) { gameRunning = false; showResults(); return; }
+            gapMode = true; gapRunnerA = lastPassRunner; gapRunnerB = firstFailRunner;
             createGapVisuals(lastPassRunner, firstFailRunner);
-            
-            setTimeout(() => {
-                gameRunning = false;
-                document.getElementById('gapAlert').classList.add('hidden');
-                showResults();
-            }, 4000);
+            setTimeout(() => { gameRunning = false; document.getElementById('gapAlert').classList.add('hidden'); showResults(); }, 4000);
         }
 
         function checkGameEnd() {
             if (!raceStarted || gameEndScheduled) return;
-            
+            if (isPaused) return;
             if (finishedRunners.length >= passCount) {
-                gameEndScheduled = true;
-                raceEnded = true;
-                
+                gameEndScheduled = true; raceEnded = true;
                 stopBGM();
 
-                document.getElementById('closeupOverlay').classList.add('hidden');
+                sprintRunners.forEach(runner => {
+                    runner.isSprinting = false; runner.ultimateActive = false;
+                    runner.speed = runner.baseSpeed;
+                    removeSprintVisualEffects(runner);
+                });
+                ultimateActive = false;
+
                 document.getElementById('sprintScreenEffect').classList.add('hidden');
                 document.getElementById('sprintSpeedLines').classList.add('hidden');
                 document.getElementById('sprintWindEffect').classList.add('hidden');
                 document.getElementById('eventAlert').classList.add('hidden');
                 document.getElementById('ultimateAlert').classList.add('hidden');
-
                 showFinalGap();
             }
         }
@@ -2111,50 +1840,30 @@
         function showResults() {
             document.getElementById('gameScreen').classList.add('hidden');
             document.getElementById('resultScreen').classList.remove('hidden');
-            
             const resultList = document.getElementById('resultList');
             const resultContainer = document.getElementById('resultContainer');
             resultList.innerHTML = '';
-
             const count = runners.length;
-            
-            let gridCols = 'grid-cols-3 md:grid-cols-6';
-            let containerMaxW = 'max-w-7xl';
-
+            let gridCols = 'grid-cols-3 md:grid-cols-6'; let containerMaxW = 'max-w-7xl';
             if (count >= 2 && count <= 5) {
                 gridCols = `grid-cols-2 md:grid-cols-${count}`;
-                
-                if (count === 2) containerMaxW = 'max-w-2xl';
-                else if (count === 3) containerMaxW = 'max-w-4xl';
-                else if (count === 4) containerMaxW = 'max-w-5xl';
-                else if (count === 5) containerMaxW = 'max-w-6xl';
-                
-            } else if (count >= 7 && count <= 8) {
-                gridCols = 'grid-cols-2 md:grid-cols-4';
-                containerMaxW = 'max-w-5xl';
-                
-            } else if (count >= 9 && count <= 10) {
-                gridCols = 'grid-cols-2 md:grid-cols-5';
-                containerMaxW = 'max-w-6xl';
-            }
-
+                if (count === 2) containerMaxW = 'max-w-2xl'; else if (count === 3) containerMaxW = 'max-w-4xl';
+                else if (count === 4) containerMaxW = 'max-w-5xl'; else if (count === 5) containerMaxW = 'max-w-6xl';
+            } else if (count >= 7 && count <= 8) { gridCols = 'grid-cols-2 md:grid-cols-4'; containerMaxW = 'max-w-5xl'; }
+            else if (count >= 9 && count <= 10) { gridCols = 'grid-cols-2 md:grid-cols-5'; containerMaxW = 'max-w-6xl'; }
             resultList.className = `grid gap-4 mb-6 ${gridCols}`;
-            resultContainer.className = `bg-gray-800 rounded-3xl p-8 w-full ${containerMaxW} transition-all duration-300`;
-
+            resultContainer.className = `bg-gray-800 rounded-none p-8 w-full ${containerMaxW} transition-all duration-300`;
             const sortedRunners = [...runners].sort((a, b) => {
                 if (a.finished && b.finished) return a.finishTime - b.finishTime;
-                if (a.finished) return -1;
-                if (b.finished) return 1;
+                if (a.finished) return -1; if (b.finished) return 1;
                 return b.position - a.position;
             });
-
             sortedRunners.forEach((runner, index) => {
-                const rank = index + 1;
-                const isPass = rank <= passCount;
+                const rank = index + 1; const isPass = rank <= passCount;
                 const div = document.createElement('div');
-                div.className = `bg-gray-700 rounded-xl p-3 border-2 ${isPass ? 'border-green-500' : 'border-transparent'}`;
+                div.className = `bg-gray-700 rounded-none p-3 border-2 ${isPass ? 'border-green-500' : 'border-transparent'}`;
                 div.innerHTML = `
-                    <div class="aspect-square rounded-lg overflow-hidden mb-2 relative">
+                    <div class="aspect-square rounded-none overflow-hidden mb-2 relative">
                         <img src="${runner.member.imgPng}" class="w-full h-full object-cover">
                     </div>
                     <div class="text-center">
@@ -2171,84 +1880,47 @@
 
         function updateNameSubtitles() {
             if (!raceStarted) return;
-            
+            if (isPaused) return;
             const sortedRunners = [...runners].sort((a, b) => {
                 if (a.finished && b.finished) return a.finishTime - b.finishTime;
-                if (a.finished) return -1;
-                if (b.finished) return 1;
+                if (a.finished) return -1; if (b.finished) return 1;
                 return b.position - a.position;
             });
-
             let ranksChanged = false;
             sortedRunners.forEach((runner, index) => {
                 const rank = index + 1;
-                if (previousRanks[runner.member.id] !== rank) {
-                    ranksChanged = true;
-                }
+                if (previousRanks[runner.member.id] !== rank) ranksChanged = true;
             });
-
             if (!ranksChanged) return;
-
             sortedRunners.forEach((runner, index) => {
-                const rank = index + 1;
-                previousRanks[runner.member.id] = rank;
-                runner.currentRank = rank;
-
+                const rank = index + 1; previousRanks[runner.member.id] = rank; runner.currentRank = rank;
                 const nameCanvas = document.createElement('canvas');
                 const nameLength = runner.member.name.length;
                 let fontSize, planeWidth, planeHeight;
-                
-                if (nameLength <= 2) {
-                    fontSize = 220;
-                    planeWidth = 20;
-                    planeHeight = 5.5;
-                } else if (nameLength === 3) {
-                    fontSize = 220;
-                    planeWidth = 20;
-                    planeHeight = 5.5;
-                } else {
-                    fontSize = 180;
-                    planeWidth = 22;
-                    planeHeight = 5;
-                }
-
-                nameCanvas.width = fontSize * 8;
-                nameCanvas.height = fontSize * 2;
+                if (nameLength <= 2) { fontSize = 220; planeWidth = 20; planeHeight = 5.5; }
+                else if (nameLength === 3) { fontSize = 220; planeWidth = 20; planeHeight = 5.5; }
+                else { fontSize = 180; planeWidth = 22; planeHeight = 5; }
+                nameCanvas.width = fontSize * 8; nameCanvas.height = fontSize * 2;
                 const nctx = nameCanvas.getContext('2d');
-                
                 nctx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
-
-                const rankX = nameCanvas.width * 0.35;
-                const nameX = nameCanvas.width * 0.65;
-
-                nctx.strokeStyle = 'rgba(0,0,0,0.8)';
-                nctx.lineWidth = 16;
-                nctx.font = `900 ${fontSize*1.2}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
-                nctx.textAlign = 'center';
-                nctx.textBaseline = 'middle';
+                const rankX = nameCanvas.width * 0.35; const nameX = nameCanvas.width * 0.65;
+                nctx.strokeStyle = 'rgba(0,0,0,0.8)'; nctx.lineWidth = 16;
+                nctx.font = `900 ${fontSize * 1.2}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
+                nctx.textAlign = 'center'; nctx.textBaseline = 'middle';
                 nctx.strokeText(rank.toString(), rankX, nameCanvas.height / 2);
-                
                 nctx.fillStyle = runner.member.color;
-                nctx.font = `900 ${fontSize*1.2}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+                nctx.font = `900 ${fontSize * 1.2}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
                 nctx.fillText(rank.toString(), rankX, nameCanvas.height / 2);
-                
-                nctx.strokeStyle = 'rgba(0,0,0,0.8)';
-                nctx.lineWidth = 12;
-                nctx.font = `900 ${fontSize}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
-                nctx.textAlign = 'center';
-                nctx.textBaseline = 'middle';
-
+                nctx.strokeStyle = 'rgba(0,0,0,0.8)'; nctx.lineWidth = 12;
+                nctx.font = `900 ${fontSize}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
+                nctx.textAlign = 'center'; nctx.textBaseline = 'middle';
                 nctx.strokeText(runner.member.name, nameX, nameCanvas.height / 2);
                 nctx.fillStyle = runner.member.color;
-                nctx.font = `900 ${fontSize}px 'Nanum Gothic', 'Noto Sans KR', sans-serif`;
+                nctx.font = `900 ${fontSize}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
                 nctx.fillText(runner.member.name, nameX, nameCanvas.height / 2);
-
-                if (runner.nameMesh.material.map) {
-                    runner.nameMesh.material.map.dispose();
-                }
+                if (runner.nameMesh.material.map) runner.nameMesh.material.map.dispose();
                 const nameTexture = new THREE.CanvasTexture(nameCanvas);
-                runner.nameMesh.material.map = nameTexture;
-                runner.nameMesh.material.needsUpdate = true;
+                runner.nameMesh.material.map = nameTexture; runner.nameMesh.material.needsUpdate = true;
             });
         }
 
@@ -2258,21 +1930,12 @@
             const delta = Math.min((currentTime - lastTime) / 1000, 0.1);
             lastTime = currentTime;
             
-            updateRunners(delta);
-            updateCamera();
-            updateRankingPanel();
-            updateNameSubtitles();
+            checkMidBossEvent();
             
+            updateRunners(delta); updateCamera(); updateRankingPanel(); updateNameSubtitles();
             const gravelTime = gameTime * 2;
-            obstacles.forEach(obs => {
-                if (obs.type === 'gravel') {
-                    obs.mesh.rotation.z = Math.sin(gravelTime) * 0.05;
-                }
-            });
-            
-            checkGameEnd();
-            renderer.render(scene, camera);
-            requestAnimationFrame(animate);
+            obstacles.forEach(obs => { if (obs.type === 'gravel') obs.mesh.rotation.z = Math.sin(gravelTime) * 0.05; });
+            checkGameEnd(); renderer.render(scene, camera); requestAnimationFrame(animate);
         }
 
         createMemberGrid();
