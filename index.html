@@ -336,10 +336,10 @@
                 color: '#43EAF6'
             },
             { 
-                id: 'jongyang', 
-                name: '★ 종 양 등 장 ★', 
-                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/JY.webp',
-                color: '#00FFFF'
+                id: 'buo', 
+                name: '부어', 
+                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/TANG.webp',
+                color: '#FFA500'
             },
             { 
                 id: 'thunder', 
@@ -1027,8 +1027,8 @@
                 case 'authority':
                     executeAuthorityEffect();
                     break;
-                case 'jongyang':
-                    executeJongYangEffect();
+                case 'buo':
+                    executeBuoEffect();
                     break;
                 case 'thunder':
                     executeThunderEffect();
@@ -1147,7 +1147,7 @@
             pushNextRunner();
         }
 
-        function executeJongYangEffect() {
+        function executeBuoEffect() {
             const eligibleRunners = runners.filter(r => r.member.name !== '천양' && !r.finished);
             if (eligibleRunners.length === 0) {
                 finishMidBossEvent();
@@ -1163,35 +1163,148 @@
             midbossAlert.querySelector('div').innerHTML = `${names}&nbsp;<span style="color: #d1d5db;">보호막 획득!</span>`;
             midbossAlert.classList.remove('hidden');
 
-            targetRunners.forEach(runner => {
-                runner.hasShield = true;
-                runner.shieldCharges = 3;
-                runner.shieldMeshes = [];
-                runner.shieldProcessedObs = new Set();
-
-                for (let i = 0; i < 3; i++) {
-                    const radius = 2 + (i * 0.4);
-                    const shieldGeom = new THREE.SphereGeometry(radius, 16, 16);
-                    const opacity = 0.25 - (i * 0.05);
-                    const shieldMat = new THREE.MeshBasicMaterial({
-                        color: 0x00ffff,
-                        transparent: true,
-                        opacity: opacity,
-                        side: THREE.DoubleSide
-                    });
-                    const shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-                    shieldMesh.position.y = 1.5;
-                    runner.mesh.add(shieldMesh);
-                    runner.shieldMeshes.push(shieldMesh);
-                }
-                
-                shieldedRunners.add(runner.member.id);
+            Promise.all(targetRunners.map(runner => pourLiquidAndShield(runner))).then(() => {
+                setTimeout(() => {
+                    midbossAlert.classList.add('hidden');
+                    finishMidBossEvent();
+                }, 1000);
             });
+        }
 
-            setTimeout(() => {
-                midbossAlert.classList.add('hidden');
-                finishMidBossEvent();
-            }, 2000);
+        function pourLiquidAndShield(runner) {
+            return new Promise((resolve) => {
+                const startY = 30;
+                const endY = 1.5;
+                const totalDist = startY - endY;
+                const liquidColor = 0xffa500;
+
+                const geo = new THREE.CylinderGeometry(0.3, 0.5, 1, 8);
+                geo.translate(0, -0.5, 0);
+                
+                const mat = new THREE.MeshBasicMaterial({ 
+                    color: liquidColor, 
+                    transparent: true, 
+                    opacity: 0.8 
+                });
+                const stream = new THREE.Mesh(geo, mat);
+                stream.position.set(0, startY, 0);
+                runner.mesh.add(stream);
+
+                const pourDuration = 600;
+                const startTime = performance.now();
+
+                function animatePour() {
+                    const now = performance.now();
+                    const p = Math.min((now - startTime) / pourDuration, 1);
+                    const ease = p * p;
+
+                    const currentLength = totalDist * ease;
+                    stream.scale.set(1, currentLength, 1);
+                    renderer.render(scene, camera);
+
+                    if (p < 1) {
+                        requestAnimationFrame(animatePour);
+                    } else {
+                        createSplashEffect(runner, liquidColor);
+                        createShield(runner);
+                        shieldedRunners.add(runner.member.id);
+
+                        const fadeDuration = 300;
+                        const fadeStart = performance.now();
+                        
+                        function animateFade() {
+                            const fp = Math.min((performance.now() - fadeStart) / fadeDuration, 1);
+                            stream.material.opacity = 0.8 * (1 - fp);
+                            stream.scale.set(1 - fp * 0.8, totalDist, 1 - fp * 0.8);
+                            renderer.render(scene, camera);
+                            
+                            if (fp < 1) {
+                                requestAnimationFrame(animateFade);
+                            } else {
+                                runner.mesh.remove(stream);
+                                stream.geometry.dispose();
+                                stream.material.dispose();
+                                resolve();
+                            }
+                        }
+                        animateFade();
+                    }
+                }
+                animatePour();
+            });
+        }
+
+        function createSplashEffect(runner, color) {
+            const particleCount = 20;
+            const geo = new THREE.BoxGeometry(0.15, 0.15, 0.15);
+            const mat = new THREE.MeshBasicMaterial({ color: color });
+            
+            for (let i = 0; i < particleCount; i++) {
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(0, 1.5, 0);
+                mesh.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.4,
+                    Math.random() * 0.4 + 0.2,
+                    (Math.random() - 0.5) * 0.4
+                );
+                runner.mesh.add(mesh);
+                
+                const duration = 500;
+                const start = performance.now();
+                
+                function animateParticle() {
+                    const p = Math.min((performance.now() - start) / duration, 1);
+                    
+                    mesh.position.add(mesh.userData.velocity);
+                    mesh.userData.velocity.y -= 0.02;
+                    mesh.rotation.x += 0.1;
+                    mesh.rotation.y += 0.1;
+                    mesh.scale.setScalar(1 - p);
+                    
+                    if (p < 1) {
+                        requestAnimationFrame(animateParticle);
+                    } else {
+                        runner.mesh.remove(mesh);
+                    }
+                }
+                animateParticle();
+            }
+        }
+
+        function createShield(runner) {
+            runner.hasShield = true;
+            runner.shieldCharges = 3;
+            runner.shieldMeshes = [];
+            runner.shieldProcessedObs = new Set();
+
+            for (let i = 0; i < 3; i++) {
+                const targetRadius = 2 + (i * 0.4);
+                const shieldGeom = new THREE.SphereGeometry(targetRadius, 16, 16);
+                const opacity = 0.25 - (i * 0.05);
+                const shieldMat = new THREE.MeshBasicMaterial({
+                    color: 0xffa500,
+                    transparent: true,
+                    opacity: opacity,
+                    side: THREE.DoubleSide
+                });
+                const shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
+                shieldMesh.position.y = 1.5;
+                shieldMesh.scale.set(0, 0, 0);
+                runner.mesh.add(shieldMesh);
+                runner.shieldMeshes.push(shieldMesh);
+                
+                const dur = 400;
+                const start = performance.now();
+                function animateShield() {
+                    const p = Math.min((performance.now() - start) / dur, 1);
+                    const s = p < 1 ? p * 1.1 : 1; 
+                    const elastic = p === 1 ? 1 : 1 - Math.pow(2, -10 * p) * Math.cos((p * 10) * Math.PI / 3);
+                    shieldMesh.scale.set(elastic, elastic, elastic);
+                    renderer.render(scene, camera);
+                    if (p < 1) requestAnimationFrame(animateShield);
+                }
+                animateShield();
+            }
         }
 
         function executeThunderEffect() {
