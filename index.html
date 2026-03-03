@@ -861,7 +861,7 @@
                 nameMesh.rotation.x = -Math.PI / 2; nameMesh.rotation.z = Math.PI / 2;
                 nameMesh.position.set(laneX, 0.07, -8); scene.add(nameMesh);
                 bodyGroup.position.set(laneX, 0, 0); bodyGroup.castShadow = true; scene.add(bodyGroup);
-                const individualSpeed = 12.8 + Math.random() * 0.4;
+                const individualSpeed = 13.3 + Math.random() * 0.4;
                 runners.push({
                     member, mesh: bodyGroup, nameMesh, torso,
                     leftArm: leftArmGroup, rightArm: rightArmGroup, leftLeg: leftLegGroup, rightLeg: rightLegGroup,
@@ -924,15 +924,13 @@
             const laneWidth = 6;
             const trackWidth = laneCount * laneWidth;
             const minSpacing = 25;
+            const obsTypes = ['hurdle', 'gravel', 'boost'];
             let obsIdCounter = 0;
             for (let lane = 0; lane < laneCount; lane++) {
                 const laneX = -trackWidth / 2 + laneWidth / 2 + lane * laneWidth;
-                const trackStart = 60; const trackEnd = trackLength - 50;
+                const trackStart = 10; const trackEnd = trackLength - 10;
                 const availableLength = trackEnd - trackStart;
-                const numHurdles = 3 + Math.floor(Math.random() * 3);
-                const numGravels = 2 + Math.floor(Math.random() * 2);
-                const numBoosts = 2 + Math.floor(Math.random() * 3);
-                const totalObstacles = numHurdles + numGravels + numBoosts;
+                const totalObstacles = 15;
                 const positions = [];
                 for (let i = 0; i < totalObstacles; i++) {
                     let attempts = 0; let validPos = false; let newPos;
@@ -943,45 +941,42 @@
                     }
                     if (validPos) positions.push(newPos);
                 }
-                shuffle(positions);
-                let posIndex = 0;
-                for (let i = 0; i < numHurdles && posIndex < positions.length; i++) {
-                    const zPos = positions[posIndex++];
-                    const hurdleGroup = new THREE.Group();
-                    const bar = new THREE.Mesh(sharedGeometries.hurdleBar, sharedMaterials.hurdleBar); bar.position.y = 0.7; hurdleGroup.add(bar);
-                    const leftPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole); leftPole.position.set(-1.5, 0.35, 0); hurdleGroup.add(leftPole);
-                    const rightPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole); rightPole.position.set(1.5, 0.35, 0); hurdleGroup.add(rightPole);
-                    const leftReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector); leftReflector.position.set(-1.5, 0.7, 0); hurdleGroup.add(leftReflector);
-                    const rightReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector); rightReflector.position.set(1.5, 0.7, 0); hurdleGroup.add(rightReflector);
-                    hurdleGroup.position.set(laneX, 0, zPos); scene.add(hurdleGroup);
-                    obstacles.push({ type: 'hurdle', mesh: hurdleGroup, lane, zPos, obsId: obsIdCounter++ });
-                }
-                for (let i = 0; i < numGravels && posIndex < positions.length; i++) {
-                    const zPos = positions[posIndex++];
-                    const gravelGroup = new THREE.Group();
-                    for (let j = 0; j < 40; j++) {
-                        const size = 0.12 + Math.random() * 0.2;
-                        const matIndex = Math.floor(Math.random() * sharedMaterials.gravelColors.length);
-                        const stone = new THREE.Mesh(sharedGeometries.stone, sharedMaterials.gravelColors[matIndex]);
-                        stone.scale.set(size, size, size);
-                        stone.position.set((Math.random() - 0.5) * 4.2, size / 2, (Math.random() - 0.5) * 4.2);
-                        stone.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-                        stone.castShadow = true; gravelGroup.add(stone);
+                for (let i = 0; i < positions.length; i++) {
+                    const zPos = positions[i];
+                    const type = obsTypes[Math.floor(Math.random() * obsTypes.length)];
+                    if (type === 'hurdle') {
+                        const hurdleGroup = new THREE.Group();
+                        const bar = new THREE.Mesh(sharedGeometries.hurdleBar, sharedMaterials.hurdleBar); bar.position.y = 0.7; hurdleGroup.add(bar);
+                        const leftPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole); leftPole.position.set(-1.5, 0.35, 0); hurdleGroup.add(leftPole);
+                        const rightPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole); rightPole.position.set(1.5, 0.35, 0); hurdleGroup.add(rightPole);
+                        const leftReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector); leftReflector.position.set(-1.5, 0.7, 0); hurdleGroup.add(leftReflector);
+                        const rightReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector); rightReflector.position.set(1.5, 0.7, 0); hurdleGroup.add(rightReflector);
+                        hurdleGroup.position.set(laneX, 0, zPos); scene.add(hurdleGroup);
+                        obstacles.push({ type: 'hurdle', mesh: hurdleGroup, lane, zPos, obsId: obsIdCounter++ });
+                    } else if (type === 'gravel') {
+                        const gravelGroup = new THREE.Group();
+                        for (let j = 0; j < 40; j++) {
+                            const size = 0.12 + Math.random() * 0.2;
+                            const matIndex = Math.floor(Math.random() * sharedMaterials.gravelColors.length);
+                            const stone = new THREE.Mesh(sharedGeometries.stone, sharedMaterials.gravelColors[matIndex]);
+                            stone.scale.set(size, size, size);
+                            stone.position.set((Math.random() - 0.5) * 4.2, size / 2, (Math.random() - 0.5) * 4.2);
+                            stone.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
+                            stone.castShadow = true; gravelGroup.add(stone);
+                        }
+                        gravelGroup.position.set(laneX, 0, zPos); scene.add(gravelGroup);
+                        obstacles.push({ type: 'gravel', mesh: gravelGroup, lane, zPos, obsId: obsIdCounter++ });
+                    } else {
+                        const boostGroup = new THREE.Group();
+                        const arrow = new THREE.Mesh(sharedGeometries.boostArrow, sharedMaterials.boostArrow);
+                        arrow.rotation.x = -Math.PI / 2; arrow.rotation.z = Math.PI; arrow.position.y = 0.05; boostGroup.add(arrow);
+                        const base = new THREE.Mesh(sharedGeometries.boostBase, sharedMaterials.boostBase);
+                        base.rotation.x = -Math.PI / 2; base.position.y = 0.03; boostGroup.add(base);
+                        const ring = new THREE.Mesh(sharedGeometries.boostRing, sharedMaterials.boostRing);
+                        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; boostGroup.add(ring);
+                        boostGroup.position.set(laneX, 0.05, zPos); scene.add(boostGroup);
+                        obstacles.push({ type: 'boost', mesh: boostGroup, lane, zPos, obsId: obsIdCounter++ });
                     }
-                    gravelGroup.position.set(laneX, 0, zPos); scene.add(gravelGroup);
-                    obstacles.push({ type: 'gravel', mesh: gravelGroup, lane, zPos, obsId: obsIdCounter++ });
-                }
-                for (let i = 0; i < numBoosts && posIndex < positions.length; i++) {
-                    const zPos = positions[posIndex++];
-                    const boostGroup = new THREE.Group();
-                    const arrow = new THREE.Mesh(sharedGeometries.boostArrow, sharedMaterials.boostArrow);
-                    arrow.rotation.x = -Math.PI / 2; arrow.rotation.z = Math.PI; arrow.position.y = 0.05; boostGroup.add(arrow);
-                    const base = new THREE.Mesh(sharedGeometries.boostBase, sharedMaterials.boostBase);
-                    base.rotation.x = -Math.PI / 2; base.position.y = 0.03; boostGroup.add(base);
-                    const ring = new THREE.Mesh(sharedGeometries.boostRing, sharedMaterials.boostRing);
-                    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; boostGroup.add(ring);
-                    boostGroup.position.set(laneX, 0.05, zPos); scene.add(boostGroup);
-                    obstacles.push({ type: 'boost', mesh: boostGroup, lane, zPos, obsId: obsIdCounter++ });
                 }
             }
         }
@@ -1603,7 +1598,8 @@
                     const cutoffRunner = sortedByPosition[passCount - 1];
                     const cutoffPos = cutoffRunner ? cutoffRunner.position : runners.reduce((max, r) => Math.max(max, r.position), 0);
                     const distToCutoff = cutoffPos - runner.position;
-                    let boostFactor = 1.0 + (distToCutoff / 125);
+                    const cutoffRemaining = trackLength - cutoffPos; // 합격컷 러너의 실제 남은 거리
+                    const boostFactor = 1.0 + (distToCutoff / cutoffRemaining);
                     runner.sprintSpeed = runner.baseSpeed * boostFactor;
                     addSprintVisualEffects(runner);
                 });
@@ -1767,7 +1763,7 @@
                                             runner.isFailJumping = true;
                                             runner.failJumpPhase = 0;
                                             runner.hurdleFailTimer = 0.5;
-                                            runner.speed = (runner.isSprinting ? runner.sprintSpeed : runner.baseSpeed) * 0.02;
+                                            runner.speed = 0;
                                             runner.hurdleFailing = true;
                                             runner.hurdleFailCount++;
                                         }
@@ -1806,7 +1802,7 @@
                     if (runner.speedBoostTimer <= 0) { runner.speed = runner.baseSpeed; if (runner.isSprinting) runner.speed = runner.sprintSpeed; }
                 }
                 let currentSpeed = runner.speed;
-                if (runner.isSprinting && runner.slowdownTimer <= 0 && runner.speedBoostTimer <= 0) currentSpeed = runner.sprintSpeed;
+                if (runner.isSprinting && runner.slowdownTimer <= 0 && runner.speedBoostTimer <= 0 && !runner.hurdleFailing) currentSpeed = runner.sprintSpeed;
                 if (runner.isElectrocuted) currentSpeed = runner.baseSpeed * 0.3;
                 if (!runner.isJumping && !runner.isPushedBack) runner.position += currentSpeed * effectiveDelta;
                 else if (!runner.isPushedBack) runner.position += currentSpeed * effectiveDelta * 0.8;
@@ -1871,6 +1867,20 @@
             const laneCount = selectedArray.length;
             const laneWidth = 6;
             const trackWidth = laneCount * laneWidth;
+
+            // 전체 러너 Z 범위
+            const allZ = runners.map(r => r.position);
+            const frontZ = Math.max(...allZ);
+            const backZ = Math.min(...allZ);
+            const spreadZ = frontZ - backZ;
+
+            // 격차 50 초과 시 합격/탈락 경계 중심, 이하면 전체 중간
+            const sortedAll = [...runners].sort((a, b) => b.position - a.position);
+            const cutoffA = sortedAll[passCount - 1];
+            const cutoffB = sortedAll[passCount];
+            const cutoffMidZ = cutoffA && cutoffB ? (cutoffA.position + cutoffB.position) / 2 : frontZ;
+            const focusZ = spreadZ <= 50 ? (frontZ + backZ) / 2 : cutoffMidZ;
+
             camera.up.set(0, 1, 0);
             if (gapMode && gapRunnerA && gapRunnerB) {
                 const midX = (gapRunnerA.laneX + gapRunnerB.laneX) / 2;
@@ -1882,20 +1892,13 @@
             } else {
                 switch (currentCameraMode) {
                     case 'overview':
-                        targetPos.set(25, 40, primaryTarget.position - 25);
-                        lookAtPos.set(5, 0, primaryTarget.position); break;
+                        targetPos.set(25, 40, focusZ - 25);
+                        lookAtPos.set(5, 0, focusZ); break;
                     case 'side': {
                         const camY = 10;
-                        if (secondaryTarget && secondaryTarget !== primaryTarget) {
-                            const midZ = (primaryTarget.position + secondaryTarget.position) / 2;
-                            const laneDistance = Math.abs(primaryTarget.laneX - secondaryTarget.laneX);
-                            const sideDistance = Math.max(trackWidth * 0.7, 35 + laneDistance * 0.5);
-                            targetPos.set(sideDistance, camY, midZ); lookAtPos.set(0, 2, midZ);
-                        } else {
-                            const sideDistance = Math.max(trackWidth * 0.7, 35);
-                            targetPos.set(sideDistance, camY, primaryTarget.position);
-                            lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
-                        }
+                        const sideDistance = Math.max(trackWidth * 0.7, 35);
+                        targetPos.set(sideDistance, camY, focusZ);
+                        lookAtPos.set(0, 2, focusZ);
                     } break;
                     case 'front': {
                         const camY = 6;
