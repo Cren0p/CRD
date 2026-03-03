@@ -1757,8 +1757,8 @@
                                         createShieldPopEffect(runner);
                                     } else {
                                         runner.isJumping = true; runner.jumpPhase = 0;
-                                        const baseSuccessRate = 0.5; const bonusFromFails = runner.hurdleFailCount * 0.15;
-                                        const successRate = Math.min(0.95, baseSuccessRate + bonusFromFails);
+                                        const baseSuccessRate = 0.4; const bonusFromFails = runner.hurdleFailCount * 0.15;
+                                        const successRate = Math.min(1.0, baseSuccessRate + bonusFromFails);
                                         if (Math.random() < successRate) {
                                             runner.hurdleFailCount = 0;
                                             runner.hurdleFailing = false;
@@ -1766,7 +1766,7 @@
                                             runner.isJumping = false;
                                             runner.isFailJumping = true;
                                             runner.failJumpPhase = 0;
-                                            runner.hurdleFailTimer = 0.3;
+                                            runner.hurdleFailTimer = 0.5;
                                             runner.speed = (runner.isSprinting ? runner.sprintSpeed : runner.baseSpeed) * 0.02;
                                             runner.hurdleFailing = true;
                                             runner.hurdleFailCount++;
