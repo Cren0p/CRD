@@ -20,11 +20,6 @@
         .member-card.selected img { filter: grayscale(0%); opacity: 1; }
 
         #gameCanvas { width: 100%; height: 100%; display: block; }
-        .speed-lines {
-            position: absolute; width: 100%; height: 100%; pointer-events: none;
-            background: repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(255,255,255,0.1) 50px, rgba(255,255,255,0.1) 51px);
-            animation: speedMove 0.05s linear infinite;
-        }
         @keyframes speedMove { from { transform: translateX(0); } to { transform: translateX(-51px); } }
         .ranking-item { transition: all 0.3s ease; }
         .ranking-item-confirmed {
@@ -184,19 +179,9 @@
             0% { opacity: 1; }
             100% { opacity: 0; }
         }
-        .electrocuted {
-            animation: electrocute 0.1s ease-in-out infinite;
-        }
-        @keyframes electrocute {
-            0%, 100% { filter: brightness(1) saturate(1); }
-            50% { filter: brightness(2) saturate(0.5) hue-rotate(60deg); }
-        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
-
-    <div id="root" style="display:none"></div>
-    <script type="module" src="/src/main.tsx"></script>
 
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="text-center">
@@ -255,7 +240,6 @@
     <div id="gameScreen" class="hidden fixed inset-0">
         <div id="canvasContainer" class="w-full h-full">
             <canvas id="gameCanvas"></canvas>
-            <div id="speedLines" class="speed-lines hidden"></div>
             <div id="sprintScreenEffect" class="sprint-screen-effect hidden"></div>
             <div id="sprintSpeedLines" class="sprint-speed-lines hidden"></div>
             <div id="sprintWindEffect" class="sprint-wind-effect hidden"></div>
@@ -318,7 +302,7 @@
 
     <script>
         const members = [
-            { id: 1, name: '천양', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/01.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/01.png', color: '#43EAF6' },
+            { id: 1, name: '천양', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/01.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/01.png', color: '#43EAF6', isBoss: true },
             { id: 2, name: '마다옴', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/02.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/02.png', color: '#FFF5C3' },
             { id: 3, name: '나나문', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/03.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/03.png', color: '#F4F6FF' },
             { id: 4, name: '임하밍', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/04.webp', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/04.png', color: '#F8DBFF' },
@@ -358,7 +342,6 @@
         let lastRacePassedIds = new Set();
         let lastRaceFailedIds = new Set();
         let imagesLoaded = 0;
-        let imagesToLoad = members.length;
         let allImagesLoaded = false;
         let sprintEnabled = true;
         let bgm = null;
@@ -371,8 +354,6 @@
         let midBossActive = false;
         let currentMidBoss = null;
         let midBossMesh = null;
-        let shieldedRunners = new Set();
-        let electrocutedRunners = new Set();
 
         function toggleSprint() {
             sprintEnabled = !sprintEnabled;
@@ -572,7 +553,6 @@
         let raceStarted = false;
         let sprintPhaseStarted = false;
         let sprintRunners = [];
-        let startTime = 0;
         let previousRanks = {};
         let gapMode = false;
         let gapRunnerA = null;
@@ -581,7 +561,14 @@
         let isPaused = false;
         let sharedGeometries = {};
         let sharedMaterials = {};
-        let bgmStartTime = 0;
+
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
 
         function initSharedResources() {
             sharedGeometries = {
@@ -616,11 +603,10 @@
             finishedRunners = []; ultimateUsed = false; ultimateActive = false; confirmedRanks = new Set();
             gameTime = 0; slowMotion = false; slowMotionFactor = 1; currentCameraMode = 'overview';
             prevCameraMode = 'overview'; cameraChangeTimer = 0; startingSequence = true; raceStarted = false;
-            raceEnded = false; sprintPhaseStarted = false; sprintRunners = []; startTime = 0;
+            raceEnded = false; sprintPhaseStarted = false; sprintRunners = [];
             previousRanks = {}; gapMode = false;
             gapRunnerA = null; gapRunnerB = null; gameEndScheduled = false; isPaused = false;
             midBossTriggered = false; midBossActive = false; currentMidBoss = null; midBossMesh = null;
-            shieldedRunners = new Set(); electrocutedRunners = new Set(); bgmStartTime = 0;
 
             document.getElementById('rankingContainer').style.opacity = '0';
             document.getElementById('ultimateAlert').classList.add('hidden');
@@ -659,7 +645,6 @@
                     }, { once: true });
                 });
             }
-            bgmStartTime = performance.now();
 
             if (scene) {
                 scene.traverse((object) => {
@@ -747,7 +732,7 @@
                 countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
                 countdownDiv.textContent = '출발!'; countdownDiv.style.color = '#22c55e';
                 countdownDiv.style.textShadow = 'none';
-                startingSequence = false; raceStarted = true; startTime = 0;
+                startingSequence = false; raceStarted = true;
                 document.getElementById('rankingContainer').style.opacity = '1';
                 lastTime = 0; animate();
             }, 3000);
@@ -774,6 +759,7 @@
             directionalLight.shadow.camera.left = -100; directionalLight.shadow.camera.right = 100;
             directionalLight.shadow.camera.top = 100; directionalLight.shadow.camera.bottom = -100;
             scene.add(directionalLight);
+            window._dirLight = directionalLight;
             window.addEventListener('resize', () => {
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight);
@@ -875,7 +861,7 @@
                 nameMesh.rotation.x = -Math.PI / 2; nameMesh.rotation.z = Math.PI / 2;
                 nameMesh.position.set(laneX, 0.07, -8); scene.add(nameMesh);
                 bodyGroup.position.set(laneX, 0, 0); bodyGroup.castShadow = true; scene.add(bodyGroup);
-                const individualSpeed = 12.0 + Math.random() * 2.5;
+                const individualSpeed = 12.8 + Math.random() * 0.4;
                 runners.push({
                     member, mesh: bodyGroup, nameMesh, torso,
                     leftArm: leftArmGroup, rightArm: rightArmGroup, leftLeg: leftLegGroup, rightLeg: rightLegGroup,
@@ -884,9 +870,9 @@
                     finished: false, finishTime: 0, ultimateActive: false, tiltPhase: Math.random() * Math.PI * 2,
                     isJumping: false, jumpPhase: 0, jumpHeight: 0, jumpStartPos: 0,
                     isSprinting: false, sprintSpeed: 0, sprintEffects: null, currentEvent: null,
-                    hurdleFailCount: 0, currentRank: index + 1,
+                    hurdleFailCount: 0, hurdleFailing: false, hurdleFailTimer: 0, isFailJumping: false, failJumpPhase: 0, currentRank: index + 1,
                     hasShield: false, shieldCharges: 0, shieldMeshes: [],
-                    isElectrocuted: false, electrocuteTimer: 0,
+                    isElectrocuted: false, electrocuteTimer: 0, electroAura: null,
                     isPushedBack: false, pushBackTarget: 0,
                     shieldProcessedObs: new Set()
                 });
@@ -957,7 +943,7 @@
                     }
                     if (validPos) positions.push(newPos);
                 }
-                positions.sort(() => Math.random() - 0.5);
+                shuffle(positions);
                 let posIndex = 0;
                 for (let i = 0; i < numHurdles && posIndex < positions.length; i++) {
                     const zPos = positions[posIndex++];
@@ -1015,6 +1001,20 @@
             isPaused = true;
             midBossActive = true;
 
+            if (currentCameraMode === 'side') {
+                currentCameraMode = Math.random() < 0.5 ? 'overview' : 'front';
+                prevCameraMode = currentCameraMode;
+                // 카메라 위치 즉시 적용
+                const leader = runners.reduce((a, b) => a.position > b.position ? a : b);
+                if (currentCameraMode === 'overview') {
+                    camera.position.set(25, 40, leader.position - 25);
+                    camera.lookAt(5, 0, leader.position);
+                } else {
+                    camera.position.set(10, 6, leader.position + 20);
+                    camera.lookAt(leader.laneX, 2, leader.position);
+                }
+            }
+
             const bossIndex = Math.floor(Math.random() * 3);
             currentMidBoss = midBosses[bossIndex];
 
@@ -1070,7 +1070,7 @@
         }
 
         function executeAuthorityEffect() {
-            const eligibleRunners = runners.filter(r => r.member.name !== '천양' && !r.finished);
+            const eligibleRunners = runners.filter(r => !r.member.isBoss && !r.finished);
             if (eligibleRunners.length === 0) {
                 finishMidBossEvent();
                 return;
@@ -1093,7 +1093,7 @@
                 numToPush = Math.min(numToPush, eligibleRunners.length);
             }
 
-            const shuffled = [...eligibleRunners].sort(() => Math.random() - 0.5);
+            const shuffled = shuffle([...eligibleRunners]);
             const targetRunners = shuffled.slice(0, numToPush);
 
             let pushIndex = 0;
@@ -1130,7 +1130,7 @@
                     if (progress < 1) {
                         requestAnimationFrame(animateCloseup);
                     } else {
-                        const pushDistance = 30 + Math.random() * 20;
+                        const pushDistance = 15 + Math.random() * 10;
                         const targetPosition = Math.max(0, runner.position - pushDistance);
                         
                         runner.isPushedBack = true;
@@ -1181,14 +1181,14 @@
         }
 
         function executeBuoEffect() {
-            const eligibleRunners = runners.filter(r => r.member.name !== '천양' && !r.finished);
+            const eligibleRunners = runners.filter(r => !r.member.isBoss && !r.finished);
             if (eligibleRunners.length === 0) {
                 finishMidBossEvent();
                 return;
             }
 
             const numToShield = Math.max(1, Math.ceil(eligibleRunners.length / 2));
-            const shuffled = [...eligibleRunners].sort(() => Math.random() - 0.5);
+            const shuffled = shuffle([...eligibleRunners]);
             const targetRunners = shuffled.slice(0, numToShield);
 
             const midbossAlert = document.getElementById('midbossAlert');
@@ -1240,7 +1240,6 @@
                     } else {
                         createSplashEffect(runner, liquidColor);
                         createShield(runner);
-                        shieldedRunners.add(runner.member.id);
 
                         const fadeDuration = 300;
                         const fadeStart = performance.now();
@@ -1318,7 +1317,8 @@
                     color: 0xffa500,
                     transparent: true,
                     opacity: opacity,
-                    side: THREE.DoubleSide
+                    side: THREE.DoubleSide,
+                    depthWrite: false
                 });
                 const shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
                 shieldMesh.position.y = 1.5;
@@ -1360,11 +1360,10 @@
 
             targetRunners.forEach(runner => {
                 runner.isElectrocuted = true;
-                runner.electrocuteTimer = 180;
-                runner.speed = runner.baseSpeed * 0.3;
-                electrocutedRunners.add(runner.member.id);
+                runner.electrocuteTimer = 2.0;
 
                 createLightningEffectFlipped(runner);
+                setTimeout(() => { if (runner.isElectrocuted) createElectroAura(runner); }, 1500);
             });
 
             setTimeout(() => {
@@ -1373,75 +1372,113 @@
             }, 2000);
         }
 
-        function createLightningEffectFlipped(runner) {
-            const lightningGroup = new THREE.Group();
-            
-            const boltSegments = 8;
-            const boltHeight = 10;
-            const points = [];
-            let currentX = 0;
-            let currentZ = 0;
-            
-            for (let i = 0; i <= boltSegments; i++) {
-                const y = (i / boltSegments) * boltHeight;  
-                if (i > 0 && i < boltSegments) {
-                    currentX += (Math.random() - 0.5) * 1.5;
-                    currentZ += (Math.random() - 0.5) * 1.5;
-                }
-                points.push(new THREE.Vector3(currentX, y, currentZ));
-            }
-            
-            const curve = new THREE.CatmullRomCurve3(points);
-            const tubeGeometry = new THREE.TubeGeometry(curve, 20, 0.15, 8, false);
-            const tubeMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xffff00, 
-                transparent: true, 
-                opacity: 0.9 
-            });
-            const mainBolt = new THREE.Mesh(tubeGeometry, tubeMaterial);
-            lightningGroup.add(mainBolt);
-            
-            const glowGeometry = new THREE.TubeGeometry(curve, 20, 0.4, 8, false);
-            const glowMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xffffaa, 
-                transparent: true, 
-                opacity: 0.3 
-            });
-            const glowBolt = new THREE.Mesh(glowGeometry, glowMaterial);
-            lightningGroup.add(glowBolt);
-            
-            for (let i = 0; i < 3; i++) {
-                const branchStart = Math.floor(Math.random() * (boltSegments - 2)) + 1;
-                const branchPoints = [];
-                const startPoint = points[branchStart];
-                branchPoints.push(startPoint.clone());
-                
-                let bx = startPoint.x;
-                let bz = startPoint.z;
+        function createShieldPopEffect(runner) {
+            // 가장 바깥쪽 구체(반지름 2.8)가 커지면서 사라짐
+            const geo = new THREE.SphereGeometry(2.8, 16, 16);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xffa500, transparent: true, opacity: 0.12, side: THREE.FrontSide, depthWrite: false });
+            const sphere = new THREE.Mesh(geo, mat);
+            runner.mesh.add(sphere);
 
-                for (let j = 1; j <= 3; j++) {
-                    bx += (Math.random() - 0.5) * 2;
-                    bz += (Math.random() - 0.5) * 2;
-                    const by = startPoint.y + j * 0.8; 
-                    branchPoints.push(new THREE.Vector3(bx, by, bz));
-                }
-                
-                if (branchPoints.length >= 2) {
-                    const branchCurve = new THREE.CatmullRomCurve3(branchPoints);
-                    const branchGeom = new THREE.TubeGeometry(branchCurve, 10, 0.08, 6, false);
-                    const branchMat = new THREE.MeshBasicMaterial({ 
-                        color: 0xffff66, 
-                        transparent: true, 
-                        opacity: 0.7 
-                    });
-                    const branch = new THREE.Mesh(branchGeom, branchMat);
-                    lightningGroup.add(branch);
+            const startTime = performance.now();
+            function animatePop() {
+                const p = Math.min((performance.now() - startTime) / 400, 1);
+                const scale = 1 + p * 1.5;
+                sphere.scale.set(scale, scale, scale);
+                sphere.material.opacity = 0.25 * (1 - p);
+                if (p < 1) requestAnimationFrame(animatePop);
+                else {
+                    runner.mesh.remove(sphere);
+                    sphere.geometry.dispose();
+                    sphere.material.dispose();
                 }
             }
-            
-            lightningGroup.position.y = 2;
-            runner.mesh.add(lightningGroup);
-            runner.lightningMesh = lightningGroup;
+            animatePop();
+        }
+
+        function createElectroAura(runner) {
+            const auraGroup = new THREE.Group();
+
+            const sparkCount = 24;
+            const sparksGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(sparkCount * 3);
+            for (let i = 0; i < sparkCount; i++) {
+                const angle = (i / sparkCount) * Math.PI * 2;
+                const r = 1.8 + Math.random() * 0.6;
+                positions[i * 3]     = Math.cos(angle) * r;
+                positions[i * 3 + 1] = 0.5 + Math.random() * 2.5;
+                positions[i * 3 + 2] = Math.sin(angle) * r;
+            }
+            sparksGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const sparksMat = new THREE.PointsMaterial({ color: 0xffee00, size: 0.3, transparent: true, opacity: 0.9, depthWrite: false });
+            auraGroup.add(new THREE.Points(sparksGeo, sparksMat));
+
+            runner.mesh.add(auraGroup);
+            runner.electroAura = auraGroup;
+        }
+
+        function createLightningEffectFlipped(runner) {
+            function buildBolt(startY, endY, zigzag) {
+                const points = [];
+                const segments = 10;
+                let cx = 0, cz = 0;
+                for (let i = 0; i <= segments; i++) {
+                    const y = startY + (endY - startY) * (i / segments);
+                    if (i > 0 && i < segments) {
+                        cx += (Math.random() - 0.5) * zigzag;
+                        cz += (Math.random() - 0.5) * zigzag;
+                    }
+                    // 마지막 3 세그먼트는 (0,0)으로 수렴 - 반드시 정수리에 꽂히도록
+                    const convergeFactor = Math.max(0, (i - (segments - 3)) / 3);
+                    points.push(new THREE.Vector3(cx * (1 - convergeFactor), y, cz * (1 - convergeFactor)));
+                }
+                return new THREE.CatmullRomCurve3(points);
+            }
+
+            const strikeGroup = new THREE.Group();
+            strikeGroup.position.set(runner.laneX, 0, runner.position);
+
+            const mainCurve = buildBolt(25, 3.0, 1.2);
+            const mainGeo = new THREE.TubeGeometry(mainCurve, 20, 0.12, 6, false);
+            const mainMat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 1.0 });
+            strikeGroup.add(new THREE.Mesh(mainGeo, mainMat));
+
+            const glowGeo = new THREE.TubeGeometry(mainCurve, 20, 0.35, 6, false);
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.35 });
+            strikeGroup.add(new THREE.Mesh(glowGeo, glowMat));
+
+            for (let b = 0; b < 3; b++) {
+                const branchCurve = buildBolt(12 + Math.random() * 8, 2.5 + Math.random() * 1.5, 1.8);
+                const branchGeo = new THREE.TubeGeometry(branchCurve, 10, 0.06, 5, false);
+                const branchMat = new THREE.MeshBasicMaterial({ color: 0xffee44, transparent: true, opacity: 0.7 });
+                const branchMesh = new THREE.Mesh(branchGeo, branchMat);
+                strikeGroup.add(branchMesh);
+            }
+
+            scene.add(strikeGroup);
+
+            const strikeStart = performance.now();
+            const strikeDuration = 1500;
+            let lastFlicker = 0;
+            function animateStrike() {
+                const now = performance.now();
+                const p = Math.min((now - strikeStart) / strikeDuration, 1);
+                if (p < 0.5) {
+                    if (now - lastFlicker > 80) {
+                        strikeGroup.visible = Math.random() > 0.25;
+                        lastFlicker = now;
+                    }
+                } else {
+                    strikeGroup.visible = true;
+                    const fadeP = (p - 0.5) / 0.5;
+                    strikeGroup.children.forEach(child => { child.material.opacity = child.material.opacity * (1 - fadeP * 0.06); });
+                }
+                if (p < 1) requestAnimationFrame(animateStrike);
+                else { scene.remove(strikeGroup); strikeGroup.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
+            }
+            animateStrike();
+
+            // 감전 아우라 없음 — 타격 이펙트만
+            runner.lightningMesh = null;
         }
 
         function finishMidBossEvent() {
@@ -1460,10 +1497,11 @@
                             mesh.material.dispose();
                         });
                         runner.shieldMeshes = [];
-                        shieldedRunners.delete(runner.member.id);
                     } else {
                         runner.shieldMeshes.forEach((mesh, index) => {
-                            if (index < runner.shieldCharges) {
+                            // index 0=가장 작음, 2=가장 큼 → 큰 것부터 없어지도록 역순 비교
+                            const reverseIndex = runner.shieldMeshes.length - 1 - index;
+                            if (reverseIndex < runner.shieldCharges) {
                                 mesh.visible = true;
                                 mesh.rotation.y += delta * (2 + index * 0.5);
                                 mesh.material.opacity = (0.25 - (index * 0.05)) + Math.sin(gameTime * 5) * 0.05;
@@ -1475,7 +1513,7 @@
                 }
 
                 if (runner.isElectrocuted) {
-                    runner.electrocuteTimer -= delta * 60;
+                    runner.electrocuteTimer -= delta;
                     if (runner.electrocuteTimer <= 0) {
                         runner.isElectrocuted = false;
                         runner.speed = runner.baseSpeed;
@@ -1487,20 +1525,17 @@
                             });
                             runner.lightningMesh = null;
                         }
-                        electrocutedRunners.delete(runner.member.id);
-                    } else if (runner.lightningMesh) {
-                        runner.lightningMesh.visible = Math.random() > 0.2;
-                        runner.lightningMesh.rotation.y += delta * 15;
-                        
-                        const scale = 0.8 + Math.random() * 0.4;
-                        runner.lightningMesh.scale.set(scale, 1, scale);
-                        
-                        runner.lightningMesh.children.forEach((child, index) => {
-                            if (index > 2) {
-                                child.position.x += (Math.random() - 0.5) * 0.2;
-                                child.position.z += (Math.random() - 0.5) * 0.2;
-                                child.material.opacity = 0.5 + Math.random() * 0.5;
-                            }
+                        if (runner.electroAura) {
+                            runner.mesh.remove(runner.electroAura);
+                            runner.electroAura.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); });
+                            runner.electroAura = null;
+                        }
+                    } else if (runner.electroAura) {
+                        // 스파크 회전 + 깜빡임
+                        runner.electroAura.rotation.y += delta * 3;
+                        runner.electroAura.children.forEach((child, i) => {
+                            if (child.isPoints) child.material.opacity = 0.5 + Math.sin(gameTime * 15 + i) * 0.4;
+                            else child.material.opacity = 0.3 + Math.sin(gameTime * 10) * 0.2;
                         });
                     }
                 }
@@ -1516,16 +1551,22 @@
             if (activeRunners.length === 0) return;
 
             const sortedByPosition = [...activeRunners].sort((a, b) => b.position - a.position);
+
+            // 탈락권 러너만 대상 (passCount 이후)
+            const failRunners = sortedByPosition.slice(passCount);
+
+            // 탈락권 내에서 꼴찌일수록 높은 가중치
             const weights = [];
-            const totalRunners = sortedByPosition.length;
-            sortedByPosition.forEach((runner, index) => { weights.push({ runner, weight: Math.pow(index + 1, 2) }); });
+            failRunners.forEach((runner, index) => {
+                weights.push({ runner, weight: Math.pow(index + 1, 2) });
+            });
 
             let randomValue = Math.random() * weights.reduce((sum, item) => sum + item.weight, 0);
             let selectedIndex = 0;
             for (let j = 0; j < weights.length; j++) { randomValue -= weights[j].weight; if (randomValue <= 0) { selectedIndex = j; break; } }
             const mainSprintRunner = weights[selectedIndex].runner;
             sprintRunners = [mainSprintRunner];
-            
+
             const mainSprintColor = mainSprintRunner.member.color;
 
             document.getElementById('sprintSplitOverlay').classList.add('active');
@@ -1558,11 +1599,12 @@
 
                 sprintRunners.forEach(runner => {
                     runner.isSprinting = true; runner.ultimateActive = true;
-                    const leaderPos = runners.reduce((max, r) => Math.max(max, r.position), 0);
-                    const distToLeader = leaderPos - runner.position;
-                    let boostFactor = 1.2 + (distToLeader / 10) * 0.15;
-                    boostFactor = Math.min(boostFactor, 1.6);
-                    runner.sprintSpeed = runner.speed * boostFactor;
+                    // 합격컷 마지막 합격자 기준으로 거리 계산
+                    const cutoffRunner = sortedByPosition[passCount - 1];
+                    const cutoffPos = cutoffRunner ? cutoffRunner.position : runners.reduce((max, r) => Math.max(max, r.position), 0);
+                    const distToCutoff = cutoffPos - runner.position;
+                    let boostFactor = 1.0 + (distToCutoff / 125);
+                    runner.sprintSpeed = runner.baseSpeed * boostFactor;
                     addSprintVisualEffects(runner);
                 });
 
@@ -1678,7 +1720,7 @@
 
             const leader = runners.reduce((a, b) => (a.position > b.position ? a : b));
             const leaderProgress = leader.position / trackLength;
-            if (leaderProgress > 0.80 && !sprintPhaseStarted && !ultimateUsed && sprintEnabled) triggerSprintPhase();
+            if (leaderProgress > 0.75 && !sprintPhaseStarted && !ultimateUsed && sprintEnabled) triggerSprintPhase();
 
             runners.forEach(runner => {
                 runner.nameMesh.position.z = runner.position - 8;
@@ -1686,6 +1728,16 @@
                     runner.jumpPhase += effectiveDelta * 15;
                     if (runner.jumpPhase < Math.PI) { runner.jumpHeight = Math.sin(runner.jumpPhase) * 2.5; runner.mesh.position.y = runner.jumpHeight; }
                     else { runner.isJumping = false; runner.jumpHeight = 0; runner.mesh.position.y = 0; }
+                }
+                if (runner.isFailJumping) {
+                    runner.failJumpPhase += effectiveDelta * 6;
+                    const stumble = Math.sin(runner.failJumpPhase) * 0.6;
+                    runner.mesh.rotation.x = stumble;
+                    if (runner.failJumpPhase >= Math.PI) {
+                        runner.isFailJumping = false;
+                        runner.failJumpPhase = 0;
+                        runner.mesh.rotation.x = 0;
+                    }
                 }
                 if (!runner.finished) {
                     obstacles.forEach(obs => {
@@ -1695,18 +1747,30 @@
                                 return;
                             }
 
-                            if (obs.type === 'hurdle' && !runner.isJumping && runner.slowdownTimer <= 0) {
+                            if (obs.type === 'hurdle' && !runner.isJumping && !runner.hurdleFailing && runner.slowdownTimer <= 0) {
                                 if (distanceToObs > 0 && distanceToObs < 2) {
                                     if (runner.hasShield && runner.shieldCharges > 0) {
                                         runner.shieldProcessedObs.add(obs.obsId);
                                         runner.shieldCharges--;
                                         runner.hurdleFailCount = 0;
+                                        runner.hurdleFailing = false;
+                                        createShieldPopEffect(runner);
                                     } else {
                                         runner.isJumping = true; runner.jumpPhase = 0;
                                         const baseSuccessRate = 0.5; const bonusFromFails = runner.hurdleFailCount * 0.15;
                                         const successRate = Math.min(0.95, baseSuccessRate + bonusFromFails);
-                                        if (Math.random() < successRate) runner.hurdleFailCount = 0;
-                                        else { runner.slowdownTimer = 12; runner.tiltPhase = 0; runner.hurdleFailCount++; }
+                                        if (Math.random() < successRate) {
+                                            runner.hurdleFailCount = 0;
+                                            runner.hurdleFailing = false;
+                                        } else {
+                                            runner.isJumping = false;
+                                            runner.isFailJumping = true;
+                                            runner.failJumpPhase = 0;
+                                            runner.hurdleFailTimer = 0.3;
+                                            runner.speed = (runner.isSprinting ? runner.sprintSpeed : runner.baseSpeed) * 0.02;
+                                            runner.hurdleFailing = true;
+                                            runner.hurdleFailCount++;
+                                        }
                                     }
                                 }
                             } else if (obs.type === 'gravel' && runner.slowdownTimer <= 0 && !runner.isJumping) {
@@ -1714,22 +1778,31 @@
                                     if (runner.hasShield && runner.shieldCharges > 0) {
                                         runner.shieldProcessedObs.add(obs.obsId);
                                         runner.shieldCharges--;
+                                        createShieldPopEffect(runner);
                                     } else {
-                                        runner.slowdownTimer = 25; runner.speed *= 0.8; runner.tiltPhase = 0; 
+                                        const activeSpeed = runner.isSprinting ? runner.sprintSpeed : runner.baseSpeed;
+                                        runner.slowdownTimer = 1.0; runner.speed = activeSpeed * 0.5; runner.tiltPhase = 0;
                                     }
                                 }
                             } else if (obs.type === 'boost' && runner.speedBoostTimer <= 0 && !runner.isJumping) {
-                                if (Math.abs(distanceToObs) < 1.5) { runner.speedBoostTimer = 40; runner.speed *= 1.5; }
+                                if (Math.abs(distanceToObs) < 1.5) {
+                                    const activeSpeed = runner.isSprinting ? runner.sprintSpeed : runner.baseSpeed;
+                                    runner.speedBoostTimer = 1.0; runner.speed = activeSpeed * 1.5;
+                                }
                             }
                         }
                     });
                 }
+                if (runner.hurdleFailing && runner.hurdleFailTimer > 0) {
+                    runner.hurdleFailTimer -= effectiveDelta;
+                    if (runner.hurdleFailTimer <= 0) { runner.hurdleFailing = false; runner.mesh.rotation.x = 0; runner.speed = runner.baseSpeed; if (runner.isSprinting) runner.speed = runner.sprintSpeed; }
+                }
                 if (runner.slowdownTimer > 0) {
-                    runner.slowdownTimer -= effectiveDelta * 60;
+                    runner.slowdownTimer -= effectiveDelta;
                     if (runner.slowdownTimer <= 0) { runner.speed = runner.baseSpeed; if (runner.isSprinting) runner.speed = runner.sprintSpeed; }
                 }
                 if (runner.speedBoostTimer > 0) {
-                    runner.speedBoostTimer -= effectiveDelta * 60;
+                    runner.speedBoostTimer -= effectiveDelta;
                     if (runner.speedBoostTimer <= 0) { runner.speed = runner.baseSpeed; if (runner.isSprinting) runner.speed = runner.sprintSpeed; }
                 }
                 let currentSpeed = runner.speed;
@@ -1753,7 +1826,7 @@
                 runner.leftArm.rotation.x = armSwing; runner.rightArm.rotation.x = -armSwing;
                 runner.leftLeg.rotation.x = -legSwing; runner.rightLeg.rotation.x = legSwing;
                 if (!runner.isJumping) runner.mesh.position.y = Math.abs(Math.sin(runner.animPhase * 2)) * 0.15;
-                if (runner.slowdownTimer > 0) {
+                if (runner.slowdownTimer > 0 && runner.hurdleFailTimer <= 0) {
                     runner.tiltPhase += effectiveDelta * 60;
                     const tilt = Math.sin(runner.tiltPhase * 0.2) * 0.5; runner.mesh.rotation.z = tilt;
                 } else if (!runner.isPushedBack) runner.mesh.rotation.z = 0;
@@ -1874,9 +1947,8 @@
                 if (isConfirmed && !confirmedRanks.has(runner.member.id)) confirmedRanks.add(runner.member.id);
                 const div = document.createElement('div');
                 let sprintClass = runner.isSprinting ? 'sprint-effect' : '';
-                let electroClass = runner.isElectrocuted ? 'electrocuted' : '';
                 const displayName = runner.member.name.length === 2 ? runner.member.name + '　' : runner.member.name;
-                div.className = `ranking-item flex items-center gap-1 p-1 rounded-none text-sm ${isPass ? 'bg-green-900/40' : 'bg-gray-700/40'} ${confirmedRanks.has(runner.member.id) ? 'ranking-item-confirmed' : ''} ${sprintClass} ${electroClass}`;
+                div.className = `ranking-item flex items-center gap-1 p-1 rounded-none text-sm ${isPass ? 'bg-green-900/40' : 'bg-gray-700/40'} ${confirmedRanks.has(runner.member.id) ? 'ranking-item-confirmed' : ''} ${sprintClass}`;
                 div.style.setProperty('color', runner.isSprinting ? runner.member.color : '');
                 
                 div.innerHTML = `
@@ -2069,6 +2141,16 @@
             updateRunners(delta); updateCamera(delta); updateRankingPanel(); updateNameSubtitles();
             const gravelTime = gameTime * 2;
             obstacles.forEach(obs => { if (obs.type === 'gravel') obs.mesh.rotation.z = Math.sin(gravelTime) * 0.05; });
+
+            // 그림자 카메라를 선두 러너 위치에 맞춰 업데이트
+            if (window._dirLight && runners.length > 0) {
+                const leaderZ = runners.reduce((max, r) => Math.max(max, r.position), 0);
+                window._dirLight.position.set(50, 100, leaderZ + 50);
+                window._dirLight.target.position.set(0, 0, leaderZ);
+                window._dirLight.target.updateMatrixWorld();
+                window._dirLight.shadow.camera.needsUpdate = true;
+            }
+
             checkGameEnd(); renderer.render(scene, camera); requestAnimationFrame(animate);
         }
 
