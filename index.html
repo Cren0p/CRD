@@ -243,8 +243,9 @@
                         <p id="selectedCount" class="text-gray-400">선택된 멤버: 0명</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button id="selectPassedBtn" class="hidden bg-green-600 hover:bg-green-500 text-white font-bold px-6 py-2 transition">이전경기 합격 인원 선택</button>
-                        <button id="selectFailedBtn" class="hidden bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-2 transition">이전경기 탈락 인원 선택</button>
+                        <button id="selectPassedBtn" class="hidden bg-green-600 hover:bg-green-500 text-white font-normal px-6 py-2 transition">이전경기 합격 인원 선택</button>
+                        <button id="selectFailedBtn" class="hidden bg-red-600 hover:bg-red-500 text-white font-normal px-6 py-2 transition">이전경기 탈락 인원 선택</button>
+                        <button id="collaboBtn" class="text-black font-normal px-6 py-2 transition" style="background:white;">합방 멤버 가져오기</button>
                         <button id="selectAllBtn" class="text-white font-normal px-6 py-2 transition" style="background:#374151;">전체 선택</button>
                     </div>
                 </div>
@@ -308,7 +309,7 @@
 
     <div id="resultScreen" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4">
         <div id="resultContainer" class="bg-gray-800 p-8 w-full">
-            <h2 class="title-font text-4xl text-center text-white mb-6">경기 결과</h2>
+            <h2 class="text-4xl text-center text-white mb-6" style="font-weight:600;">경기 결과</h2>
             <div id="resultList" class="grid gap-4 mb-6"></div>
             <div class="text-center">
                 <button id="replayBtn" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-xl px-8 py-3 transition">다시하기</button>
@@ -587,6 +588,17 @@
             passCount = null; updateSelectedCount(); updateStartButton();
         }
 
+        document.getElementById('collaboBtn').addEventListener('click', () => {
+            const collaboIds = new Set([2, 5, 6, 7, 8, 9, 11]);
+            selectedMembers.clear();
+            document.querySelectorAll('.member-card').forEach(card => {
+                const id = parseInt(card.dataset.id);
+                if (collaboIds.has(id)) { selectedMembers.add(id); card.classList.add('selected', 'border-white'); }
+                else { card.classList.remove('selected', 'border-white'); }
+            });
+            passCount = null; updateSelectedCount(); updateStartButton();
+        });
+
         document.getElementById('selectPassedBtn').addEventListener('click', () => {
             applyPreviousSelection(lastRacePassedIds);
         });
@@ -609,6 +621,7 @@
 
         document.getElementById('replayBtn').addEventListener('click', () => {
             passCount = null;
+            const cb = document.getElementById('collaboBtn'); if (cb) cb.classList.add('hidden');
             stopBGM();
             document.getElementById('resultScreen').classList.add('hidden');
             document.getElementById('menuScreen').classList.remove('hidden');
@@ -2244,15 +2257,6 @@
         }
 
         createMemberGrid();
-        // 초기 선택 멤버 설정
-        const defaultSelected = new Set([2, 5, 6, 7, 8, 9, 11]);
-        document.querySelectorAll('.member-card').forEach(card => {
-            const id = parseInt(card.dataset.id);
-            if (defaultSelected.has(id)) {
-                selectedMembers.add(id);
-                card.classList.add('selected', 'border-white');
-            }
-        });
         renderPassButtons();
         updateSelectedCount();
         updateStartButton();
