@@ -284,7 +284,7 @@
 
         <div id="volumeControl">
             <button id="muteBtn" onclick="toggleMute()" title="음소거">🔊</button>
-            <input type="range" id="volumeSlider" min="0" max="100" value="50" oninput="changeVolume(this.value)">
+            <input type="range" id="volumeSlider" min="0" max="100" value="25" oninput="changeVolume(this.value)">
         </div>
 
         <div class="ranking-container" id="rankingContainer" style="opacity: 0; transition: opacity 0.5s;">
@@ -366,7 +366,7 @@
         let sprintEnabled = true;
         let bgm = null;
         let isMuted = false;
-        let currentVolume = 0.5;
+        let currentVolume = 0.25;
         const preloadedTextures = {};
         const preloadedBossTextures = {};
 
