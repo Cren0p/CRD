@@ -358,9 +358,10 @@
 
         let selectedMembers = new Set();
         let passCount = null;
-        const CONSECUTIVE_PASS4_MEMBERS = new Set([12]);   // 파니 4연속
-        const CONSECUTIVE_PASS3_MEMBERS = new Set([3, 8]);  // 나나문 3연속, 캬앙 3연속
-        const CONSECUTIVE_FAIL2_MEMBERS = new Set([4, 10, 11]); // 임하밍, 모카, 달타 2연속 탈락
+        const CONSECUTIVE_PASS5_MEMBERS = new Set([12]);      // 파니 5연속
+        const CONSECUTIVE_PASS3_MEMBERS = new Set([3, 8]);   // 나나문, 캬앙 3연속
+        const CONSECUTIVE_PASS2_MEMBERS = new Set([2, 9]);   // 마다옴, 김웰로 2연속
+        const CONSECUTIVE_FAIL2_MEMBERS = new Set([11]);     // 달타 2연속 탈락
         let lastRacePassedIds = new Set();
         let lastRaceFailedIds = new Set();
         let lastPassCount = null;
@@ -509,10 +510,12 @@
                 const card = document.createElement('div');
                 card.className = 'member-card bg-gray-700 p-3 cursor-pointer border-2 border-transparent';
                 card.dataset.id = member.id;
-                const streakBadge = CONSECUTIVE_PASS4_MEMBERS.has(member.id)
-                    ? `<div class="streak-badge" style="color:#4ade80;">4연속 합격 중</div>`
+                const streakBadge = CONSECUTIVE_PASS5_MEMBERS.has(member.id)
+                    ? `<div class="streak-badge" style="color:#4ade80;">5연속 합격 중</div>`
                     : CONSECUTIVE_PASS3_MEMBERS.has(member.id)
                     ? `<div class="streak-badge" style="color:#4ade80;">3연속 합격 중</div>`
+                    : CONSECUTIVE_PASS2_MEMBERS.has(member.id)
+                    ? `<div class="streak-badge" style="color:#4ade80;">2연속 합격 중</div>`
                     : CONSECUTIVE_FAIL2_MEMBERS.has(member.id)
                     ? `<div class="streak-badge" style="color:#f87171;">2연속 탈락 중</div>`
                     : `<div class="streak-badge" style="visibility:hidden;">dummy</div>`;
