@@ -1,2281 +1,652 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>천타버스 랜덤 달리기</title>
-    <link rel="icon" href="https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CRD.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .title-font { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: 800; }
-        * { border-radius: 0 !important; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>인생게임 스코어보드</title>
+<style>
+:root {
+  --bg:#080810; --surface:#0f0f1a; --card:#141428;
+  --border:#1e1e34; --text:#e4e4f4; --muted:#52527a;
+  --font:'Segoe UI','Malgun Gothic',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);}
 
-        .member-card { transition: all 0.3s ease; }
-        .member-card.selected { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.5); }
-        .member-card:hover { transform: scale(1.02); }
-        .member-card img { transition: filter 0.3s ease; }
-        .member-card:not(.selected) img { filter: grayscale(100%); opacity: 0.7; }
-        .member-card.selected img { filter: grayscale(0%); opacity: 1; }
+/* loading */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:14px;color:var(--muted);}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:#FFA502;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-        #gameCanvas { width: 100%; height: 100%; display: block; }
-        @keyframes speedMove { from { transform: translateX(0); } to { transform: translateX(-51px); } }
-        .ranking-item { transition: all 0.3s ease; }
-        .ranking-item-confirmed {
-            animation: confirmPulse 1s ease infinite, confirmGlow 0.5s ease-out;
-            background: linear-gradient(135deg, rgba(34, 197, 94,0.3) 0%, rgba(34, 197, 94,0.1) 100%);
-            border: 2px solid #22c55e; transform: scale(1.12);
-        }
-        @keyframes confirmPulse { 0%, 100% { transform: scale(1.12); } 50% { transform: scale(1.18); } }
-        @keyframes confirmGlow {
-            0% { box-shadow: 0 0 0 rgba(34,197,94,0); }
-            50% { box-shadow: 0 0 30px rgba(34,197,94,0.8), 0 0 60px rgba(34,197,94,0.4); }
-            100% { box-shadow: 0 0 20px rgba(34,197,94,0.6), 0 0 40px rgba(34,197,94,0.3); }
-        }
-        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
-        #eventAlert div, #ultimateAlert div, #countdownAlert div {
-            background: rgba(0, 0, 0, 0.85); padding: 20px 32px; backdrop-filter: blur(8px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; min-height: 60px;
-        }
-        #ultimateAlert div { text-shadow: none !important; width: 100%; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); }
-        #gapAlert div {
-            background: rgba(0, 0, 0, 0.85); padding: 20px 32px; backdrop-filter: blur(8px);
-            display: flex; align-items: center; justify-content: center; min-height: 60px;
-            width: 100%; box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
-        }
-        #eventAlert { background: transparent; }
-        #eventAlert div { background: rgba(0, 0, 0, 0.85); padding: 12px 24px; min-height: 48px; font-size: 1.5rem; }
-        .ranking-container {
-            position: absolute; top: 50%; left: 16px; transform: translateY(-50%) scale(1.3); transform-origin: left center;
-        }
-        #ultimateAlert { bottom: 0; top: auto; left: 0; right: 0; width: 100%; }
-        #countdownAlert { top: 8%; }
-        #eventAlert { top: 8%; left: 50%; transform: translate(-50%, 0); }
-        #gapAlert { bottom: 0; top: auto; left: 0; right: 0; width: 100%; }
-        #memberGrid .member-card img { object-position: bottom; }
-        .countdown-text { animation: countdownPulse 0.5s ease-out; }
-        @keyframes countdownPulse { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-        .sprint-effect { animation: sprintGlow 0.3s ease-in-out infinite alternate; }
-        @keyframes sprintGlow {
-            0% { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
-            100% { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor, 0 0 60px currentColor; }
-        }
-        .sprint-screen-effect {
-            display: none;
-        }
-        .sprint-speed-lines {
-            position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 4; overflow: hidden;
-        }
-        .sprint-speed-lines::before, .sprint-speed-lines::after {
-            content: ''; position: absolute; width: 200%; height: 200%; top: -50%; left: -50%;
-            background: repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.15) 40px, rgba(255,255,255,0.15) 42px);
-            animation: sprintLines 0.015s linear infinite;
-        }
-        .sprint-speed-lines::after {
-            background: repeating-linear-gradient(85deg, transparent, transparent 60px, rgba(255,255,255,0.08) 60px, rgba(255,255,255,0.08) 63px);
-            animation-duration: 0.02s;
-        }
-        @keyframes sprintLines { from { transform: translateX(0); } to { transform: translateX(-42px); } }
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8);
-            display: flex; align-items: center; justify-content: center; z-index: 9999;
-        }
-        .loading-spinner { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #3b82f6; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .sprint-wind-effect { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 6; overflow: hidden; }
-        .wind-line { position: absolute; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: windMove 0.3s linear infinite; }
-        @keyframes windMove { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100vw); } }
-        .toggle-switch { position: relative; width: 56px; height: 28px; background: #4b5563; cursor: pointer; transition: background 0.3s ease; }
-        .toggle-switch.active { background: #5DFCE7; }
-        .toggle-switch .toggle-knob { position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; background: white; transition: transform 0.3s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-        .toggle-switch.active .toggle-knob { transform: translateX(28px); }
-        .divider-line { width: 1px; height: 48px; background: #4b5563; }
-        @keyframes needSelectPulse {
-            0%, 100% { box-shadow: 0 0 0 2px rgba(93,252,231,0.2); }
-            50% { box-shadow: 0 0 0 4px rgba(93,252,231,0.9), 0 0 20px rgba(93,252,231,0.45); }
-        }
-        @keyframes needPassPulse {
-            0%, 100% { box-shadow: 0 0 0 2px rgba(93,252,231,0.2); }
-            50% { box-shadow: 0 0 0 4px rgba(93,252,231,0.9), 0 0 20px rgba(93,252,231,0.45); }
-        }
-        .need-select-pulse { animation: needSelectPulse 1.4s ease-in-out infinite; }
-        .need-pass-pulse { animation: needPassPulse 1.4s ease-in-out infinite; }
-        .start-ready { animation: needSelectPulse 1.4s ease-in-out infinite; }
-        .pass-count-btn {
-            width: 36px; height: 36px; font-size: 15px; font-weight: bold;
-            background: #374151; border: 2px solid #4b5563; color: #9ca3af; cursor: pointer; transition: all 0.15s;
-        }
-        .pass-count-btn:disabled { background: #1F2937; border-color: #374151; color: #4b5563; cursor: default; }
-        .pass-count-btn:not(:disabled):hover { background: #4b5563; color: white; }
-        .pass-count-btn.selected { background: #4b5563; border-color: #9ca3af; color: white; }
-        .streak-badge { font-size: 14px; color: #4ade80; text-align: center; margin-top: 2px; }
-        #volumeControl {
-            position: absolute; top: 16px; right: 16px; z-index: 100; display: flex; align-items: center; gap: 8px;
-            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); padding: 8px 14px; pointer-events: auto;
-        }
-        #volumeControl button {
-            background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; padding: 2px;
-            display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; transition: background 0.2s;
-        }
-        #volumeControl button:hover { background: rgba(255,255,255,0.15); }
-        #volumeSlider { -webkit-appearance: none; appearance: none; width: 100px; height: 6px; background: rgba(255,255,255,0.25); outline: none; cursor: pointer; }
-        #volumeSlider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; background: #5DFCE7; cursor: pointer; box-shadow: 0 0 4px rgba(93,252,231,0.5); transition: transform 0.15s; }
-        #volumeSlider::-webkit-slider-thumb:hover { transform: scale(1.2); }
-        #volumeSlider::-moz-range-thumb { width: 16px; height: 16px; background: #5DFCE7; cursor: pointer; border: none; box-shadow: 0 0 4px rgba(93,252,231,0.5); }
+.wrap{max-width:1260px;margin:0 auto;padding:28px 20px 60px;}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:10px;}
+.page-title{font-size:1.5rem;font-weight:800;}
+.page-title span{background:linear-gradient(135deg,#FFA502,#E879F9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.badge{font-size:.7rem;background:var(--border);color:var(--muted);padding:4px 11px;border-radius:20px;}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:#2ED573;display:inline-block;margin-right:5px;}
+.conn-dot.off{background:#FF4757;}
 
-        .sprint-split-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 50; overflow: hidden; }
-        .split-left, .split-right { position: absolute; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); transition: transform 0.5s ease; }
-        .split-left { clip-path: polygon(0 0, 100% 0, 50% 100%, 0% 100%); transform: translateX(-100%); }
-        .split-right { clip-path: polygon(50% 0, 100% 0, 100% 100%, 0% 100%); transform: translateX(100%); }
-        .sprint-split-overlay.active .split-left { animation: splitLeft 1.5s ease forwards; }
-        .sprint-split-overlay.active .split-right { animation: splitRight 1.5s ease forwards; }
-        @keyframes splitLeft { 0% { transform: translateX(-100%); } 30% { transform: translateX(0); } 70% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-        @keyframes splitRight { 0% { transform: translateX(100%); } 30% { transform: translateX(0); } 70% { transform: translateX(0); } 100% { transform: translateX(100%); } }
-        .sprint-character-display {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 51; pointer-events: none; opacity: 0; text-align: center;
-        }
-        .sprint-character-display.active { animation: characterShow 1.5s ease forwards; }
-        @keyframes characterShow {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-            30% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-        }
-        .sprint-character-image {
-            max-width: 300px; max-height: 400px; margin-bottom: 20px;
-        }
-        .sprint-character-text {
-            font-size: 3rem; font-weight: bold; color: #fbbf24;
-        }
+.phase-nav{display:flex;border:1px solid var(--border);overflow:hidden;margin-bottom:28px;}
+.pnav{flex:1;padding:10px;text-align:center;font-size:.82rem;font-weight:700;cursor:pointer;background:transparent;border:none;color:var(--muted);font-family:var(--font);transition:all .2s;position:relative;}
+.pnav.active{background:var(--card);color:var(--text);}
+.pnav.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#FFA502,#E879F9);}
+.pnav:not(:last-child){border-right:1px solid var(--border);}
 
-        .midboss-split-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; overflow: hidden; }
-        .midboss-split-left, .midboss-split-right { position: absolute; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); }
-        .midboss-split-left { clip-path: polygon(0 0, 100% 0, 50% 100%, 0% 100%); transform: translateX(-100%); }
-        .midboss-split-right { clip-path: polygon(50% 0, 100% 0, 100% 100%, 0% 100%); transform: translateX(100%); }
-        .midboss-split-overlay.active .midboss-split-left { animation: midbossSplitLeft 2s ease forwards; }
-        .midboss-split-overlay.active .midboss-split-right { animation: midbossSplitRight 2s ease forwards; }
-        @keyframes midbossSplitLeft { 0% { transform: translateX(-100%); } 20% { transform: translateX(0); } 80% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-        @keyframes midbossSplitRight { 0% { transform: translateX(100%); } 20% { transform: translateX(0); } 80% { transform: translateX(0); } 100% { transform: translateX(100%); } }
-        .midboss-character-display {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 61; pointer-events: none; opacity: 0; text-align: center;
-        }
-        .midboss-character-display.active { animation: midbossCharacterShow 2s ease forwards; }
-        @keyframes midbossCharacterShow {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-            25% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-        }
-        .midboss-character-image {
-            max-width: 350px; max-height: 450px; margin-bottom: 20px;
-        }
-        .midboss-character-text {
-            font-size: 3.5rem; font-weight: bold;
-        }
-        #midbossAlert {
-            position: absolute; bottom: 0; left: 0; right: 0; width: 100%; z-index: 62;
-        }
-        #midbossAlert div {
-            background: rgba(0, 0, 0, 0.9); padding: 20px 32px; backdrop-filter: blur(8px);
-            display: flex; align-items: center; justify-content: center; min-height: 70px;
-            width: 100%; box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
-        }
-        .midboss-subtitle {
-            font-size: 2rem; font-weight: bold; color: #fbbf24;
-        }
+.slabel{font-size:.68rem;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;}
+.pool{display:flex;flex-wrap:wrap;gap:7px;min-height:50px;background:var(--surface);border:1px dashed var(--border);padding:12px;margin-bottom:22px;}
+.chip{padding:5px 14px;font-size:.82rem;font-weight:700;cursor:pointer;user-select:none;transition:all .15s;border:2px solid transparent;font-family:var(--font);}
+.chip-u{background:var(--card);border-color:var(--border);color:var(--text);}
+.chip-u:hover{border-color:#FFA502;color:#FFA502;transform:translateY(-1px);}
+.chip-s{background:#FFA502;border-color:#ffd066;color:#000;transform:scale(1.05);}
 
-        .lightning-flash {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 55;
-            background: rgba(255, 255, 0, 0.3);
-            animation: lightningFlash 0.1s ease-out;
-        }
-        @keyframes lightningFlash {
-            0% { opacity: 1; }
-            100% { opacity: 0; }
-        }
-    </style>
+.setup-teams{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:22px;}
+@media(max-width:640px){.setup-teams{grid-template-columns:1fr;}}
+.sc{background:var(--surface);border:1px solid var(--border);padding:16px;cursor:default;transition:border-color .2s;}
+.sc.drop{border-color:rgba(255,255,255,.3);}
+.sc-head{display:flex;align-items:center;gap:9px;margin-bottom:12px;}
+.color-pick{width:24px;height:24px;flex-shrink:0;border:2px solid rgba(255,255,255,.2);cursor:pointer;padding:0;background:none;}
+.color-pick::-webkit-color-swatch-wrapper{padding:0;}
+.color-pick::-webkit-color-swatch{border:none;}
+.tni{background:transparent;border:none;color:var(--text);font-family:var(--font);font-size:.9rem;font-weight:800;flex:1;outline:none;border-bottom:1px solid transparent;transition:border-color .2s;}
+.tni:focus{border-bottom-color:var(--muted);}
+.cnt{font-size:.7rem;color:var(--muted);}
+.slots{display:flex;flex-direction:column;gap:5px;}
+.slot-row{display:flex;align-items:center;gap:8px;}
+.slot-num{font-size:.65rem;font-weight:700;color:var(--muted);width:14px;text-align:right;flex-shrink:0;}
+.slot-f{flex:1;padding:5px 12px;font-size:.82rem;font-weight:700;color:#000;cursor:pointer;transition:opacity .15s;font-family:var(--font);}
+.slot-f:hover{opacity:.75;}
+.slot-e{flex:1;padding:5px 12px;font-size:.78rem;background:var(--card);border:1px dashed var(--border);color:var(--muted);}
+.slot-legend{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+.sleg{font-size:.75rem;color:var(--muted);}
+.setup-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;background:var(--surface);border:1px solid var(--border);}
+
+.btn{padding:8px 18px;border:none;cursor:pointer;font-family:var(--font);font-weight:700;font-size:.82rem;transition:all .18s;}
+.btn-ghost{background:var(--card);border:1px solid var(--border);color:var(--text);}
+.btn-ghost:hover{border-color:var(--muted);}
+.btn-start{background:linear-gradient(135deg,#FFA502,#E879F9);color:#fff;margin-left:auto;padding:9px 26px;font-size:.88rem;}
+.btn-start:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(255,165,2,.35);}
+.btn-start:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-danger{background:transparent;border:1px solid #ff475722;color:#FF4757;}
+.btn-danger:hover{background:#ff47570f;}
+.btn-end{background:linear-gradient(135deg,#ff4757,#c0392b);color:#fff;}
+.btn-end:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(255,71,87,.4);}
+.btn-resume{background:linear-gradient(135deg,#2ED573,#7effa8);color:#000;}
+.btn-resume:hover{transform:translateY(-1px);}
+.btn-sm{padding:5px 12px;font-size:.75rem;}
+.ended-badge{display:inline-flex;align-items:center;gap:6px;background:#ff47571a;border:1px solid #ff475744;color:#ff6b7a;font-size:.75rem;font-weight:700;padding:4px 12px;letter-spacing:.05em;}
+
+.game-top{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.game-top h2{font-size:1rem;font-weight:700;color:var(--muted);flex:1;}
+.rounds-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+@media(max-width:900px){.rounds-wrap{grid-template-columns:1fr;}}
+.round-col{background:var(--surface);border:1px solid var(--border);overflow:hidden;}
+.round-header{padding:12px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.round-title{font-size:.82rem;font-weight:800;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;}
+.round-body{padding:10px 12px 14px;display:flex;flex-direction:column;gap:6px;}
+.prow{background:var(--card);border:1px solid var(--border);padding:10px 12px;}
+.prow-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.prow-rank{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:900;flex-shrink:0;}
+.pr1{background:#FFD700;color:#000;} .pr2{background:#B8B8B8;color:#000;} .pr3{background:#CD7F32;color:#fff;} .pr4{background:var(--border);color:var(--muted);}
+.prow-name{font-size:.82rem;font-weight:700;flex:1;}
+.prow-team{font-size:.65rem;color:var(--muted);}
+.prow-money{font-size:1.05rem;font-weight:900;font-variant-numeric:tabular-nums;margin-bottom:8px;}
+.inp-wrap{display:flex;align-items:center;gap:4px;}
+.mtog{display:flex;border:1px solid var(--border);overflow:hidden;flex-shrink:0;}
+.mbtn{padding:3px 7px;font-size:.65rem;font-weight:700;background:transparent;border:none;cursor:pointer;font-family:var(--font);color:var(--muted);transition:all .15s;white-space:nowrap;}
+.mbtn.on{background:var(--surface);color:var(--text);}
+.ni{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 7px;font-size:.78rem;font-family:var(--font);width:80px;text-align:right;}
+.ni:focus{outline:none;border-color:var(--muted);}
+.apbtn{padding:4px 8px;border:none;cursor:pointer;font-weight:800;font-size:.74rem;font-family:var(--font);transition:all .15s;white-space:nowrap;}
+.ap-p{background:rgba(46,213,115,.15);color:#2ED573;} .ap-p:hover{background:rgba(46,213,115,.3);}
+.ap-m{background:rgba(255,71,87,.15);color:#FF4757;} .ap-m:hover{background:rgba(255,71,87,.3);}
+.ap-s{background:rgba(255,165,2,.15);color:#FFA502;} .ap-s:hover{background:rgba(255,165,2,.3);}
+
+.totals-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;}
+@media(max-width:640px){.totals-bar{grid-template-columns:repeat(2,1fr);}}
+.tot-card{background:var(--surface);border:1px solid var(--border);padding:12px 14px;position:relative;overflow:hidden;}
+.tot-rnk{font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
+.tot-name{font-size:.8rem;font-weight:800;margin-bottom:4px;}
+.tot-val{font-size:1.25rem;font-weight:900;font-variant-numeric:tabular-nums;}
+
+.log-section{background:var(--surface);border:1px solid var(--border);padding:16px;margin-bottom:20px;}
+.log-list{max-height:160px;overflow-y:auto;}
+.lrow{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.76rem;}
+.lrow:last-child{border-bottom:none;}
+.ldot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.lwho{font-weight:700;}
+.lsub{color:var(--muted);font-size:.7rem;}
+.lamt{font-weight:900;font-size:.86rem;margin-left:auto;}
+.lamt.p{color:#2ED573;} .lamt.m{color:#FF4757;} .lamt.s{color:#FFA502;}
+.lafter{color:var(--muted);font-size:.7rem;}
+.ltime{font-size:.67rem;color:var(--muted);}
+
+.ov-box{background:var(--surface);border:1px solid var(--border);padding:16px 18px;}
+.ov-url{font-family:'Consolas',monospace;font-size:.76rem;color:#FFA502;background:var(--card);padding:8px 12px;word-break:break-all;border:1px solid var(--border);display:block;margin:7px 0 10px;}
+.ov-hint{font-size:.74rem;color:var(--muted);line-height:1.7;}
+
+/* ── OVERLAY ── */
+body.ovm{background:transparent !important;}
+.ov-stage{width:100vmin;height:100vmin;max-width:600px;max-height:600px;position:relative;overflow:hidden;font-family:'Segoe UI','Malgun Gothic',sans-serif;}
+.ov-panel{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;padding:14px;gap:8px;opacity:0;transition:opacity .6s ease;}
+.ov-panel.visible{opacity:1;}
+.ov-ph{display:flex;align-items:center;gap:8px;margin-bottom:2px;}
+.ov-ph-title{font-size:1.1rem;font-weight:900;color:rgba(255,255,255,.55);letter-spacing:.1em;text-transform:uppercase;}
+.ov-pips{display:flex;gap:5px;margin-left:auto;}
+.ov-pip{width:18px;height:4px;background:rgba(255,255,255,.18);}
+.ov-pip.on{background:rgba(255,255,255,.75);}
+.ov-prow{background:rgba(8,8,24,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:12px 18px;display:flex;align-items:center;gap:14px;border:1px solid rgba(255,255,255,.08);border-left:4px solid;}
+.ov-rnum{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:900;flex-shrink:0;}
+.ovr1{background:#FFD700;color:#000;} .ovr2{background:#B8B8B8;color:#000;} .ovr3{background:#CD7F32;color:#fff;} .ovr4{background:#3a3a3a;color:#fff;}
+.ov-info{flex:1;min-width:0;}
+.ov-pname{font-size:1.25rem;font-weight:800;color:#fff;line-height:1.2;white-space:nowrap;}
+.ov-psub{font-size:.82rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ov-pmoney{font-size:1.7rem;font-weight:900;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.ov-progress{position:absolute;bottom:0;left:0;height:3px;background:rgba(255,255,255,.35);transition:none;}
+
+.ov-final{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;padding:14px;gap:8px;opacity:0;transition:opacity .6s ease;}
+.ov-final.visible{opacity:1;}
+.ov-fh{display:flex;align-items:center;margin-bottom:2px;}
+.ov-fh-title{font-size:1.1rem;font-weight:900;color:rgba(255,255,255,.55);letter-spacing:.1em;text-transform:uppercase;}
+.ov-trow{background:rgba(8,8,24,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:12px 18px;display:flex;align-items:center;gap:14px;border:1px solid rgba(255,255,255,.08);border-left:4px solid;}
+.ov-trow-rank{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:900;flex-shrink:0;}
+.ov-trow-info{flex:1;min-width:0;}
+.ov-trow-members{font-size:1.05rem;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ov-trow-money{font-size:1.7rem;font-weight:900;font-variant-numeric:tabular-nums;flex-shrink:0;}
+</style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
+<body>
+<div id="app"><div class="loading"><div class="spinner"></div><div id="loadMsg">Firebase SDK 로딩 중...</div></div></div>
 
-    <div id="loadingOverlay" class="loading-overlay hidden">
-        <div class="text-center">
-            <div class="loading-spinner mx-auto mb-4"></div>
-            <p class="text-white text-xl">이미지 로딩 중... <span id="loadingProgress">0/15</span></p>
-        </div>
+<script>
+// SDK 로드 확인
+window.addEventListener('load', function() {
+  const msg = document.getElementById('loadMsg');
+  if (typeof firebase === 'undefined') {
+    msg.innerHTML = '❌ Firebase SDK 로드 실패<br><span style="font-size:.75rem;color:#aaa">인터넷 연결을 확인하세요</span>';
+    return;
+  }
+  msg.textContent = 'Firebase 초기화 중...';
+});
+</script>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAJmePUKepIjsrSLoqLKO9EjhipdnnheaY",
+  authDomain: "lifegame-26c6c.firebaseapp.com",
+  databaseURL: "https://lifegame-26c6c-default-rtdb.firebaseio.com",
+  projectId: "lifegame-26c6c",
+  storageBucket: "lifegame-26c6c.firebasestorage.app",
+  messagingSenderId: "723913370465",
+  appId: "1:723913370465:web:999650fa0d05a9ad39f320"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const STATE_REF = db.ref('game/state');
+
+// 연결 상태 모니터링
+const connRef = db.ref('.info/connected');
+connRef.on('value', snap => {
+  const el = document.getElementById('loadMsg');
+  if (el) el.textContent = snap.val() ? 'Firebase 데이터 로딩 중...' : 'Firebase 서버 연결 중...';
+});
+
+// 5초 타임아웃
+setTimeout(() => {
+  if (document.getElementById('loadMsg')) {
+    document.getElementById('app').innerHTML =
+      '<div class="loading">' +
+      '<div style="color:#FF4757;font-size:1.1rem;font-weight:800">⚠️ 연결 시간 초과</div>' +
+      '<div style="font-size:.82rem;color:var(--muted);text-align:center;line-height:1.8;margin-top:8px">' +
+      'Firebase에 연결할 수 없습니다.<br>' +
+      '아래를 확인해주세요:<br>' +
+      '① 인터넷 연결 상태<br>' +
+      '② Firebase 콘솔 → Realtime Database → 규칙이 <b style="color:#FFA502">true</b>인지<br>' +
+      '③ F12 → Console 탭의 빨간 오류 메시지' +
+      '</div></div>';
+  }
+}, 5000);
+
+const MEMBERS = ['천양','코렛트','머독','타요','나나문','한결','카나시','양도끼','카라멜','세노','하카츄','빅토리'];
+const DEF_COLORS = ['#FF4757','#2ED573','#FFA502','#E879F9'];
+const TN = ['팀 1','팀 2','팀 3','팀 4'];
+const isOv = location.search.indexOf('overlay') !== -1;
+
+let state = null;
+let sel = null;
+let modes = {};
+let ovCurrent = 0;
+let ovTimer = null;
+let ovProgressEl = null;
+let myLastSave = 0; // 내가 저장한 updatedAt — Firebase echo 무시용
+
+function defState() {
+  return {
+    phase: 'setup',
+    teams: TN.map((name, i) => ({ id: i, name, color: DEF_COLORS[i], members: [] })),
+    unassigned: [...MEMBERS],
+    log: [],
+    ended: false,
+    updatedAt: 0
+  };
+}
+
+function save() {
+  state.updatedAt = Date.now();
+  myLastSave = state.updatedAt;
+  STATE_REF.set(state);
+}
+
+// Firebase는 빈 배열을 null로 반환 → 배열로 복원
+function sanitize(s) {
+  if (!s) return defState();
+  s.unassigned = Array.isArray(s.unassigned) ? s.unassigned : [];
+  s.log = Array.isArray(s.log) ? s.log : [];
+  if (!Array.isArray(s.teams)) s.teams = defState().teams;
+  s.teams.forEach(t => {
+    t.members = Array.isArray(t.members) ? t.members : [];
+    if (!t.color) t.color = DEF_COLORS[t.id] || '#888';
+  });
+  if (s.ended === undefined) s.ended = false;
+  return s;
+}
+function fmtD(n) {
+  const a = Math.abs(n), sg = n < 0 ? '-' : '';
+  return sg + '$' + a.toLocaleString('en-US');
+}
+function fmtShort(n) {
+  const a = Math.abs(n), sg = n < 0 ? '-' : '';
+  if (a >= 1000000) return sg + '$' + (a/1000000).toFixed(1).replace(/\.0$/,'') + 'M';
+  if (a >= 1000) return sg + '$' + (a/1000).toFixed(1).replace(/\.0$/,'') + 'K';
+  return sg + '$' + a.toLocaleString('en-US');
+}
+function teamTotal(t) { return t.members.reduce((s, m) => s + m.money, 0); }
+function getTeamRanks() {
+  return [...state.teams].map((t, i) => ({ i, tot: teamTotal(t) }))
+    .sort((a, b) => b.tot - a.tot)
+    .reduce((r, x, ri) => { r[x.i] = ri + 1; return r; }, {});
+}
+function roundPlayers(round) {
+  return state.teams.flatMap((t, ti) => {
+    const m = t.members[round];
+    return m ? [{ name: m.name, money: m.money, teamName: t.name, teamColor: t.color, ti, mi: round }] : [];
+  });
+}
+function rankPlayers(players) { return [...players].sort((a, b) => b.money - a.money); }
+function getMode(ti, mi) { return modes[ti + '_' + mi] || 'delta'; }
+function addLog(ti, mname, amount, after, mode) {
+  const t = state.teams[ti];
+  state.log.unshift({ ti, teamName: t.name, color: t.color, mname, amount, after, mode,
+    time: new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) });
+  if (state.log.length > 80) state.log.pop();
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render() {
+  document.getElementById('app').innerHTML = state.phase === 'setup' ? renderSetup() : renderGame();
+  bind();
+}
+
+function renderSetup() {
+  const ok = state.unassigned.length === 0;
+  const poolHtml = state.unassigned.length
+    ? state.unassigned.map(m => `<div class="chip ${sel===m?'chip-s':'chip-u'}" data-member="${m}">${m}</div>`).join('')
+    : '<span style="color:var(--muted);font-size:.8rem;align-self:center">✅ 모든 멤버 배정 완료</span>';
+
+  const teamsHtml = state.teams.map((t, i) => {
+    const slotsHtml = [0,1,2].map(slot => {
+      const m = t.members[slot];
+      return `<div class="slot-row"><div class="slot-num">${slot+1}</div>`
+        + (m
+          ? `<div class="slot-f" style="background:${t.color}" data-rm="${m.name}" data-rft="${i}" data-slot="${slot}">${m.name} ✕</div>`
+          : `<div class="slot-e">경기 ${slot+1}</div>`)
+        + `</div>`;
+    }).join('');
+    return `<div class="sc ${sel&&t.members.length<3?'drop':''}" id="sc${i}" data-ti="${i}">
+      <div class="sc-head">
+        <input type="color" class="color-pick" value="${t.color}" data-ci="${i}">
+        <input class="tni" data-tn="${i}" value="${t.name}" maxlength="14">
+        <span class="cnt">${t.members.length}/3</span>
+      </div>
+      <div class="slots">${slotsHtml}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="wrap">
+    <div class="page-header">
+      <div class="page-title">🎲 <span>인생게임</span> 스코어보드</div>
+      <span class="badge"><span class="conn-dot" id="connDot"></span>Firebase 연결됨</span>
     </div>
-
-    <div id="menuScreen" class="min-h-screen p-4">
-        <div class="max-w-6xl mx-auto">
-            <div class="flex justify-center mb-6">
-                <img src="https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CRD.webp" alt="천타버스 랜덤 달리기" class="h-36 object-contain">
-            </div>
-            
-            <div class="flex justify-center mb-6">
-                <div id="settingsBar" class="bg-gray-800 p-6 flex items-center gap-6" style="position:relative;">
-                    <div id="passCountHighlightBox" style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;"></div>
-                    <div id="passCountBox" class="flex items-center gap-3" style="position:relative;z-index:1;">
-                        <span class="text-xl font-bold">상위</span>
-                        <div id="passCountWrapper" style="display:grid;grid-template-columns:repeat(6,36px);gap:4px;"></div>
-                        <span class="text-xl font-bold">명 합격</span>
-                    </div>
-                    <div id="innerDivider" class="divider-line"></div>
-                    <div class="flex items-center gap-3">
-                        <span class="text-base whitespace-nowrap">막판 스퍼트</span>
-                        <div id="sprintToggle" class="toggle-switch active" onclick="toggleSprint()">
-                            <div class="toggle-knob"></div>
-                        </div>
-                    </div>
-                    <div class="divider-line"></div>
-                    <button id="startBtn" class="font-bold px-8 transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 w-52" style="font-size:1.8rem;height:64px;line-height:1;background:#4B5563;color:white;" disabled>
-                        이미지 로딩 중...
-                    </button>
-                </div>
-            </div>
-            <div id="memberSection" class="bg-gray-800 p-6 mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="flex items-center gap-4">
-                        <h2 class="text-2xl font-bold">참가 멤버 선택</h2>
-                        <p id="selectedCount" class="text-gray-400">선택된 멤버: 0명</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button id="selectPassedBtn" class="hidden font-normal px-6 py-2 transition" style="background:#384252;color:#22c55e;">이전경기 합격 인원 선택</button>
-                        <button id="selectFailedBtn" class="hidden font-normal px-6 py-2 transition" style="background:#384252;color:#ef4444;">이전경기 탈락 인원 선택</button>
-                        <button id="selectAllBtn" class="text-white font-normal px-6 py-2 transition" style="background:#374151;">전체 선택</button>
-                    </div>
-                </div>
-                <div id="memberGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"></div>
-            </div>
-        </div>
+    <div class="phase-nav">
+      <div class="pnav active">① 팀 편성</div>
+      <div class="pnav" style="cursor:default">② 게임 진행</div>
     </div>
-
-    <div id="gameScreen" class="hidden fixed inset-0">
-        <div id="canvasContainer" class="w-full h-full">
-            <canvas id="gameCanvas"></canvas>
-            <div id="sprintScreenEffect" class="sprint-screen-effect hidden"></div>
-            <div id="sprintSpeedLines" class="sprint-speed-lines hidden"></div>
-            <div id="sprintWindEffect" class="sprint-wind-effect hidden"></div>
-            <div id="sprintSplitOverlay" class="sprint-split-overlay">
-                <div class="split-left"></div>
-                <div class="split-right"></div>
-            </div>
-            <div id="sprintCharacterDisplay" class="sprint-character-display">
-                <img id="sprintCharacterImage" class="sprint-character-image" src="" alt="스프린트 캐릭터">
-                <div id="sprintCharacterText" class="sprint-character-text"></div>
-            </div>
-            <div id="midbossSplitOverlay" class="midboss-split-overlay">
-                <div class="midboss-split-left"></div>
-                <div class="midboss-split-right"></div>
-            </div>
-            <div id="midbossCharacterDisplay" class="midboss-character-display">
-                <img id="midbossCharacterImage" class="midboss-character-image" src="" alt="중간보스">
-                <div id="midbossCharacterText" class="midboss-character-text"></div>
-            </div>
-            <div id="midbossAlert" class="hidden">
-                <div class="midboss-subtitle"></div>
-            </div>
-            <div id="lightningFlash" class="lightning-flash hidden"></div>
-        </div>
-
-        <div id="volumeControl">
-            <button id="muteBtn" onclick="toggleMute()" title="음소거">🔊</button>
-            <input type="range" id="volumeSlider" min="0" max="100" value="25" oninput="changeVolume(this.value)">
-        </div>
-
-        <div class="ranking-container" id="rankingContainer" style="opacity: 0; transition: opacity 0.5s;">
-            <div id="rankingPanel" class="bg-black/75 p-3 w-max pointer-events-auto backdrop-blur-sm">
-                <div class="mb-2 text-center"><img src="https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CRD_A.webp" style="height:32px;object-fit:contain;margin:0 auto;"></div>
-                <div id="rankingList" class="space-y-1"></div>
-            </div>
-        </div>
-        <div id="countdownAlert" class="absolute left-1/2 transform -translate-x-1/2 hidden z-50">
-            <div class="title-font text-6xl text-center text-white countdown-text"></div>
-        </div>
-        <div id="ultimateAlert" class="absolute hidden z-50">
-            <div class="title-font text-5xl text-center text-white w-full"></div>
-        </div>
-        <div id="eventAlert" class="absolute hidden z-40">
-            <div class="title-font text-3xl text-center text-white flex items-center gap-3"></div>
-        </div>
-        <div id="gapAlert" class="absolute hidden z-50">
-            <div class="title-font text-3xl text-center text-white flex items-center justify-center gap-4"></div>
-        </div>
+    <div class="slabel">미배정 멤버 (${state.unassigned.length}명)</div>
+    <div class="pool">${poolHtml}</div>
+    <div class="slot-legend"><div class="sleg">자리 번호 = 경기 번호 &nbsp;·&nbsp; 각 팀 1번끼리 경기1, 2번끼리 경기2, 3번끼리 경기3</div></div>
+    <div class="setup-teams">${teamsHtml}</div>
+    <div class="setup-actions">
+      <button class="btn btn-ghost" id="btnReset">초기화</button>
+      <button class="btn btn-start" id="btnStart" ${ok?'':'disabled'}>${ok?'게임 시작 →':state.unassigned.length+'명 미배정'}</button>
     </div>
+    ${renderOvBox()}
+  </div>`;
+}
 
-    <div id="resultScreen" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4">
-        <div id="resultContainer" class="bg-gray-800 w-full" style="display:flex;flex-direction:column;align-items:center;">
-            <div id="captureTarget" class="w-full" style="background:#1f2937;padding:25px 25px 25px;">
-                <h2 class="text-4xl text-center text-white" style="font-weight:600;margin-bottom:25px;">경기 결과</h2>
-                <div id="resultList" class="grid gap-4"></div>
-            </div>
-            <div style="padding:0 0 25px;display:flex;justify-content:center;gap:12px;">
-                <button id="captureBtn" class="font-bold text-xl px-8 py-3 transition" style="background:#5DFCE7;color:#000000;">결과 복사</button>
-                <button id="replayBtn" class="text-white font-bold text-xl px-8 py-3 transition" style="background:#374151;">다시하기</button>
-            </div>
+function renderGame() {
+  const teamRanks = getTeamRanks();
+  const rkL = ['🥇','🥈','🥉','4위'];
+  const rkC = {1:'#FFD700',2:'#B8B8B8',3:'#CD7F32',4:'#666'};
+  const roundNames = ['경기 1','경기 2','경기 3'];
+
+  const totHtml = state.teams.map((t, i) => {
+    const r = teamRanks[i], tot = teamTotal(t);
+    return `<div class="tot-card" style="border-top:2px solid ${t.color}">
+      <div class="tot-rnk" style="color:${rkC[r]}">${rkL[r-1]} 팀 순위</div>
+      <div class="tot-name" style="color:${t.color}">${t.name}</div>
+      <div class="tot-val" style="color:${t.color}">${fmtD(tot)}</div>
+    </div>`;
+  }).join('');
+
+  const roundsHtml = [0,1,2].map(round => {
+    const players = roundPlayers(round);
+    const ranked = rankPlayers(players);
+    const rowsHtml = ranked.map((p, ri) => {
+      const isDelta = getMode(p.ti, p.mi) === 'delta';
+      return `<div class="prow">
+        <div class="prow-top">
+          <div class="prow-rank pr${ri+1}">${ri+1}</div>
+          <div class="prow-name">${p.name}</div>
+          <div class="prow-team" style="color:${p.teamColor}">${p.teamName}</div>
         </div>
+        <div class="prow-money" style="color:${p.teamColor}">${fmtD(p.money)}</div>
+        <div class="inp-wrap">
+          <div class="mtog">
+            <button class="mbtn ${isDelta?'on':''}" data-mode="delta" data-ti="${p.ti}" data-mi="${p.mi}">증감</button>
+            <button class="mbtn ${!isDelta?'on':''}" data-mode="set" data-ti="${p.ti}" data-mi="${p.mi}">설정</button>
+          </div>
+          <input class="ni" id="inp${p.ti}_${p.mi}" type="number" step="1" placeholder="${isDelta?'$증감액':'$금액'}">
+          ${isDelta
+            ? `<button class="apbtn ap-p" data-act="plus" data-ti="${p.ti}" data-mi="${p.mi}">+</button>
+               <button class="apbtn ap-m" data-act="minus" data-ti="${p.ti}" data-mi="${p.mi}">−</button>`
+            : `<button class="apbtn ap-s" data-act="set" data-ti="${p.ti}" data-mi="${p.mi}">적용</button>`}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="round-col">
+      <div class="round-header">
+        <div class="round-title">${roundNames[round]}</div>
+        <span style="font-size:.7rem;color:var(--muted)">${players.map(p=>p.name).join(' · ')}</span>
+      </div>
+      <div class="round-body">${rowsHtml}</div>
+    </div>`;
+  }).join('');
+
+  const logHtml = state.log.length === 0
+    ? '<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:12px">거래 내역이 없습니다</div>'
+    : state.log.map(l => {
+        const isSet = l.mode === 'set';
+        const cls = isSet ? 's' : (l.amount >= 0 ? 'p' : 'm');
+        const disp = isSet ? ('→ ' + fmtD(l.after)) : ((l.amount >= 0 ? '+' : '') + fmtShort(l.amount));
+        return `<div class="lrow">
+          <div class="ldot" style="background:${l.color}"></div>
+          <div class="lwho">${l.teamName}</div>
+          <div class="lsub">· ${l.mname}</div>
+          <div class="lamt ${cls}">${disp}</div>
+          <div class="lafter">잔액 ${fmtD(l.after)}</div>
+          <div class="ltime">${l.time}</div>
+        </div>`;
+      }).join('');
+
+  const endBtn = state.ended
+    ? `<span class="ended-badge">🏁 게임 종료</span><button class="btn btn-resume btn-sm" id="btnResume">▶ 게임 재개</button>`
+    : `<button class="btn btn-end btn-sm" id="btnEnd">🏁 게임 종료</button>`;
+
+  return `<div class="wrap">
+    <div class="page-header">
+      <div class="page-title">🎲 <span>인생게임</span> 스코어보드</div>
+      <span class="badge"><span class="conn-dot" id="connDot"></span>Firebase 연결됨</span>
     </div>
-
-    <script>
-        const members = [
-            { id: 1, name: '천양', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/01.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/01.webp', color: '#43EAF6', isBoss: true },
-            { id: 2, name: '마다옴', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/02.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/02.webp', color: '#FFF5C3' },
-            { id: 3, name: '나나문', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/03.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/03.webp', color: '#F4F6FF' },
-            { id: 4, name: '임하밍', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/04.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/04.webp', color: '#F8DBFF' },
-            { id: 5, name: '문모모', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/05.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/05.webp', color: '#A868FB' },
-            { id: 6, name: '한아밍', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/06.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/06.webp', color: '#FEC0C2' },
-            { id: 7, name: '카푸', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/07.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/07.webp', color: '#FFCFB7' },
-            { id: 8, name: '캬앙', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/08.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/08.webp', color: '#FF5A4D' },
-            { id: 9, name: '김웰로', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/09.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/09.webp', color: '#BFEF90' },
-            { id: 10, name: '모카', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/10.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/10.webp', color: '#5E8EFF' },
-            { id: 11, name: '달타', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/11.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/11.webp', color: '#FFC462' },
-            { id: 12, name: '파니', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/12.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/12.webp', color: '#9FC5E8' }
-        ];
-
-        const midBosses = [
-            { 
-                id: 'authority', 
-                name: '수장의 권한', 
-                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CY.webp',
-                color: '#43EAF6'
-            },
-            { 
-                id: 'buo', 
-                name: '부어', 
-                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/TANG.webp',
-                color: '#FFA500'
-            },
-            { 
-                id: 'thunder', 
-                name: '천기의자', 
-                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/TH.webp',
-                color: '#FFFF00'
-            }
-        ];
-
-        let selectedMembers = new Set();
-        let passCount = null;
-        const CONSECUTIVE_PASS4_MEMBERS = new Set([12]);   // 파니 4연속
-        const CONSECUTIVE_PASS3_MEMBERS = new Set([3, 8]);  // 나나문 3연속, 캬앙 3연속
-        const CONSECUTIVE_FAIL2_MEMBERS = new Set([4, 10, 11]); // 임하밍, 모카, 달타 2연속 탈락
-        let lastRacePassedIds = new Set();
-        let lastRaceFailedIds = new Set();
-        let lastPassCount = null;
-        let imagesLoaded = 0;
-        let allImagesLoaded = false;
-        let sprintEnabled = true;
-        let bgm = null;
-        let isMuted = false;
-        let currentVolume = 0.25;
-        const preloadedTextures = {};
-        const preloadedBossTextures = {};
-
-        let midBossTriggered = false;
-        let midBossActive = false;
-        let currentMidBoss = null;
-        let midBossMesh = null;
-
-        let bossEnabled = true;
-        function toggleBoss() {
-            bossEnabled = !bossEnabled;
-            const toggle = document.getElementById('bossToggle');
-            toggle && (bossEnabled ? toggle.classList.add('active') : toggle.classList.remove('active'));
-        }
-        function toggleSprint() {
-            sprintEnabled = !sprintEnabled;
-            const toggle = document.getElementById('sprintToggle');
-            if (sprintEnabled) { toggle.classList.add('active'); } else { toggle.classList.remove('active'); }
-        }
-
-        function toggleMute() {
-            isMuted = !isMuted;
-            const muteBtn = document.getElementById('muteBtn');
-            if (isMuted) { muteBtn.textContent = '🔇'; if (bgm) bgm.volume = 0; }
-            else { updateMuteIcon(currentVolume); if (bgm) bgm.volume = currentVolume; }
-        }
-
-        function changeVolume(val) {
-            currentVolume = val / 100;
-            if (bgm) bgm.volume = isMuted ? 0 : currentVolume;
-            if (!isMuted) updateMuteIcon(currentVolume);
-            if (isMuted && currentVolume > 0) { isMuted = false; if (bgm) bgm.volume = currentVolume; updateMuteIcon(currentVolume); }
-        }
-
-        function updateMuteIcon(vol) {
-            const muteBtn = document.getElementById('muteBtn');
-            if (vol <= 0) muteBtn.textContent = '🔇';
-            else if (vol < 0.35) muteBtn.textContent = '🔈';
-            else if (vol < 0.7) muteBtn.textContent = '🔉';
-            else muteBtn.textContent = '🔊';
-        }
-
-        function stopBGM() {
-            if (bgm) {
-                const fadeInterval = setInterval(() => {
-                    if (bgm.volume > 0.05) bgm.volume = Math.max(0, bgm.volume - 0.05);
-                    else { bgm.pause(); bgm.currentTime = 0; clearInterval(fadeInterval); }
-                }, 70);
-            }
-        }
-
-        function preloadImages() {
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            const loadingProgress = document.getElementById('loadingProgress');
-            loadingOverlay.classList.remove('hidden');
-            let loadedCount = 0;
-            const totalToLoad = members.length + midBosses.length;
-            const textureLoader = new THREE.TextureLoader();
-            textureLoader.setCrossOrigin('anonymous');
-            
-            members.forEach(member => {
-                textureLoader.load(member.img, (texture) => {
-                    texture.magFilter = THREE.LinearFilter; texture.minFilter = THREE.LinearFilter;
-                    preloadedTextures[member.id] = texture;
-                    loadedCount++; imagesLoaded = loadedCount;
-                    loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
-                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
-                }, undefined, () => {
-                    loadedCount++; imagesLoaded = loadedCount;
-                    loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
-                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
-                });
-            });
-
-            midBosses.forEach(boss => {
-                textureLoader.load(boss.img, (texture) => {
-                    texture.magFilter = THREE.LinearFilter; texture.minFilter = THREE.LinearFilter;
-                    preloadedBossTextures[boss.id] = texture;
-                    loadedCount++;
-                    loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
-                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
-                }, undefined, () => {
-                    loadedCount++;
-                    loadingProgress.textContent = `${loadedCount}/${totalToLoad}`;
-                    if (loadedCount === totalToLoad) { allImagesLoaded = true; loadingOverlay.classList.add('hidden'); updateStartButton(); }
-                });
-            });
-        }
-
-        function updateStartButton() {
-            const startBtn = document.getElementById('startBtn');
-            const memberSection = document.getElementById('memberSection');
-            const passCountBox = document.getElementById('passCountBox');
-            const hlBox = document.getElementById('passCountHighlightBox');
-            const innerDivider = document.getElementById('innerDivider');
-
-            // 강조 박스 (passCountBox 3면 테두리)
-            function setPassHighlight(on) {
-                if (!hlBox || !innerDivider) return;
-                if (on) {
-                    const divRect = innerDivider.getBoundingClientRect();
-                    const barRect = document.getElementById('settingsBar').getBoundingClientRect();
-                    const w = divRect.left + divRect.width / 2 - barRect.left;
-                    hlBox.style.cssText = `position:absolute;top:0;left:0;bottom:0;width:${w}px;pointer-events:none;animation:needSelectPulse 1.4s ease-in-out infinite;`;
-                } else {
-                    hlBox.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;';
-                }
-            }
-
-            if (!allImagesLoaded) {
-                startBtn.disabled = true; startBtn.textContent = '이미지 로딩 중...'; startBtn.style.fontSize = '1.25rem'; startBtn.style.fontWeight = 'normal';
-                startBtn.classList.remove('start-ready');
-                memberSection && memberSection.classList.remove('need-select-pulse');
-                setPassHighlight(false);
-            } else if (selectedMembers.size < 2) {
-                startBtn.disabled = true; startBtn.textContent = '2명 이상 선택'; startBtn.style.fontSize = '1.25rem'; startBtn.style.fontWeight = 'normal';
-                startBtn.classList.remove('start-ready');
-                memberSection && memberSection.classList.add('need-select-pulse');
-                setPassHighlight(false);
-            } else if (passCount === null) {
-                startBtn.disabled = true; startBtn.textContent = '합격자 수 선택'; startBtn.style.fontSize = '1.25rem'; startBtn.style.fontWeight = 'normal';
-                startBtn.classList.remove('start-ready');
-                memberSection && memberSection.classList.remove('need-select-pulse');
-                setPassHighlight(true);
-            } else {
-                startBtn.disabled = false; startBtn.textContent = '경기 시작!'; startBtn.style.fontSize = '1.8rem'; startBtn.style.fontWeight = '600';
-                startBtn.classList.add('start-ready');
-                memberSection && memberSection.classList.remove('need-select-pulse');
-                setPassHighlight(false);
-            }
-        }
-
-        function createMemberGrid() {
-            const grid = document.getElementById('memberGrid');
-            grid.innerHTML = '';
-            members.forEach(member => {
-                const card = document.createElement('div');
-                card.className = 'member-card bg-gray-700 p-3 cursor-pointer border-2 border-transparent';
-                card.dataset.id = member.id;
-                const streakBadge = CONSECUTIVE_PASS4_MEMBERS.has(member.id)
-                    ? `<div class="streak-badge" style="color:#4ade80;">4연속 합격 중</div>`
-                    : CONSECUTIVE_PASS3_MEMBERS.has(member.id)
-                    ? `<div class="streak-badge" style="color:#4ade80;">3연속 합격 중</div>`
-                    : CONSECUTIVE_FAIL2_MEMBERS.has(member.id)
-                    ? `<div class="streak-badge" style="color:#f87171;">2연속 탈락 중</div>`
-                    : `<div class="streak-badge" style="visibility:hidden;">dummy</div>`;
-                card.innerHTML = `
-                    ${streakBadge}
-                    <div class="aspect-square overflow-hidden mb-2 relative">
-                        <img src="${member.imgPng}" alt="${member.name}" class="w-full h-full object-cover">
-                        <div class="absolute bottom-0 left-0 w-full h-1" style="background-color: ${member.color}"></div>
-                    </div>
-                    <div class="text-center font-bold text-sm" style="color: ${member.color}">${member.name}</div>
-                `;
-                card.addEventListener('click', () => toggleMember(member.id, card));
-                grid.appendChild(card);
-            });
-        }
-
-        function toggleMember(id, card) {
-            if (selectedMembers.has(id)) { selectedMembers.delete(id); card.classList.remove('selected', 'border-white'); }
-            else { selectedMembers.add(id); card.classList.add('selected', 'border-white'); }
-            passCount = null;
-            updateSelectedCount(); updateStartButton();
-        }
-
-        function updateSelectedCount() {
-            document.getElementById('selectedCount').textContent = `선택된 멤버: ${selectedMembers.size}명`;
-            const allBtn = document.getElementById('selectAllBtn');
-            if (allBtn) allBtn.textContent = selectedMembers.size === members.length ? '선택 해제' : '전체 선택';
-            renderPassButtons();
-        }
-
-        function renderPassButtons() {
-            const wrapper = document.getElementById('passCountWrapper');
-            if (!wrapper) return;
-            const maxPass = selectedMembers.size >= 2 ? Math.max(1, selectedMembers.size - 1) : 0;
-            if (passCount !== null && (maxPass === 0 || passCount > maxPass)) passCount = null;
-            wrapper.innerHTML = '';
-            wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;';
-            [[1,2,3,4,5,6],[7,8,9,10,11]].forEach(row => {
-                const rowDiv = document.createElement('div');
-                rowDiv.style.cssText = 'display:flex;gap:4px;';
-                row.forEach(n => {
-                    const btn = document.createElement('button');
-                    const isEnabled = n <= maxPass;
-                    btn.className = 'pass-count-btn' + (n === passCount ? ' selected' : '');
-                    btn.textContent = n;
-                    btn.disabled = !isEnabled;
-                    btn.style.opacity = isEnabled ? '1' : '0.3';
-                    btn.style.cursor = isEnabled ? 'pointer' : 'default';
-                    if (isEnabled) btn.onclick = () => { passCount = (passCount === n) ? null : n; renderPassButtons(); updateStartButton(); };
-                    rowDiv.appendChild(btn);
-                });
-                wrapper.appendChild(rowDiv);
-            });
-        }
-
-        document.getElementById('selectAllBtn').addEventListener('click', () => {
-            const cards = document.querySelectorAll('.member-card');
-            if (selectedMembers.size === members.length) { selectedMembers.clear(); cards.forEach(card => card.classList.remove('selected', 'border-white')); }
-            else { members.forEach(m => selectedMembers.add(m.id)); cards.forEach(card => card.classList.add('selected', 'border-white')); }
-            passCount = null; updateSelectedCount(); updateStartButton();
-            document.getElementById('selectAllBtn').textContent = selectedMembers.size === members.length ? '선택 해제' : '전체 선택';
-        });
-
-        function applyPreviousSelection(targetIds) {
-            selectedMembers.clear();
-            const cards = document.querySelectorAll('.member-card');
-            cards.forEach(card => {
-                const id = parseInt(card.dataset.id);
-                if (targetIds.has(id)) {
-                    selectedMembers.add(id);
-                    card.classList.add('selected', 'border-white');
-                } else {
-                    card.classList.remove('selected', 'border-white');
-                }
-            });
-            passCount = null; updateSelectedCount(); updateStartButton();
-        }
-
-        document.getElementById('selectPassedBtn').addEventListener('click', () => {
-            applyPreviousSelection(lastRacePassedIds);
-        });
-
-        document.getElementById('selectFailedBtn').addEventListener('click', () => {
-            applyPreviousSelection(lastRaceFailedIds);
-        });
-
-        // passCount는 버튼 선택 방식으로 변경됨 (renderPassButtons)
-
-        document.getElementById('startBtn').addEventListener('click', () => {
-            if (!allImagesLoaded) return;
-            if (selectedMembers.size < 2) return;
-            if (passCount === null) return;
-            if (passCount >= selectedMembers.size) { alert('합격 인원은 참가자 수보다 적어야 합니다!'); return; }
-            document.getElementById('menuScreen').classList.add('hidden');
-            document.getElementById('gameScreen').classList.remove('hidden');
-            startGame();
-        });
-
-        document.getElementById('captureBtn').addEventListener('click', () => {
-            const btn = document.getElementById('captureBtn');
-            const el = document.getElementById('captureTarget');
-            domtoimage.toBlob(el, { bgcolor: '#1f2937', scale: 2 }).then(blob => {
-                navigator.clipboard.write([new ClipboardItem({'image/png': blob})])
-                    .then(() => { btn.textContent = '복사 완료'; })
-                    .catch(() => {
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.download = '경기결과.png';
-                        link.href = url;
-                        link.click();
-                        btn.textContent = '복사 완료';
-                    });
-            });
-        });
-
-        document.getElementById('replayBtn').addEventListener('click', () => {
-            // 모든 선택 해제
-            passCount = null;
-            selectedMembers.clear();
-            document.querySelectorAll('.member-card').forEach(card => card.classList.remove('selected', 'border-white'));
-            updateSelectedCount();
-            updateStartButton();
-            stopBGM();
-            document.getElementById('resultScreen').classList.add('hidden');
-            document.getElementById('menuScreen').classList.remove('hidden');
-            if (lastRacePassedIds.size > 0 || lastRaceFailedIds.size > 0) {
-                document.getElementById('selectPassedBtn').classList.remove('hidden');
-                document.getElementById('selectFailedBtn').classList.remove('hidden');
-            }
-        });
-
-        let scene, camera, renderer;
-        let runners = [];
-        let obstacles = [];
-        let trackLength = 500;
-        let finishLine;
-        let gameRunning = false;
-        let raceEnded = false;
-        let gameTime = 0;
-        let slowMotion = false;
-        let slowMotionFactor = 1;
-        let currentCameraMode = 'overview';
-        let prevCameraMode = 'overview';
-        let cameraChangeTimer = 0;
-        let finishedRunners = [];
-        let ultimateUsed = false;
-        let ultimateActive = false;
-        let confirmedRanks = new Set();
-        let startingSequence = false;
-        let raceStarted = false;
-        let sprintPhaseStarted = false;
-        let sprintRunners = [];
-        let previousRanks = {};
-        let gapMode = false;
-        let gapRunnerA = null;
-        let gapRunnerB = null;
-        let gameEndScheduled = false;
-        let isPaused = false;
-        let sharedGeometries = {};
-        let sharedMaterials = {};
-
-        function shuffle(arr) {
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            return arr;
-        }
-
-        function initSharedResources() {
-            sharedGeometries = {
-                hurdleBar: new THREE.BoxGeometry(3.5, 0.2, 0.2),
-                hurdlePole: new THREE.CylinderGeometry(0.06, 0.06, 0.7, 8),
-                hurdleReflector: new THREE.BoxGeometry(0.3, 0.15, 0.25),
-                stone: new THREE.DodecahedronGeometry(1, 0),
-                boostArrow: null,
-                boostBase: new THREE.PlaneGeometry(2, 3),
-                boostRing: new THREE.RingGeometry(1.2, 1.5, 16),
-                trailPlane: new THREE.PlaneGeometry(0.15, 1)
-            };
-            const arrowShape = new THREE.Shape();
-            arrowShape.moveTo(0, 1.2); arrowShape.lineTo(0.8, 0); arrowShape.lineTo(0.4, 0);
-            arrowShape.lineTo(0.4, -1.2); arrowShape.lineTo(-0.4, -1.2); arrowShape.lineTo(-0.4, 0);
-            arrowShape.lineTo(-0.8, 0); arrowShape.lineTo(0, 1.2);
-            sharedGeometries.boostArrow = new THREE.ShapeGeometry(arrowShape);
-            sharedMaterials = {
-                hurdleBar: new THREE.MeshStandardMaterial({ color: 0xff5500, metalness: 0.5, roughness: 0.3, emissive: 0xff2200, emissiveIntensity: 0.2 }),
-                hurdlePole: new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8, roughness: 0.2 }),
-                hurdleReflector: new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 0.5 }),
-                boostArrow: new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x006600, emissiveIntensity: 0.4 }),
-                boostBase: new THREE.MeshStandardMaterial({ color: 0x004400, transparent: true, opacity: 0.5 }),
-                boostRing: new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.3, side: THREE.DoubleSide }),
-                gravelColors: [0x888888, 0x777777, 0x999999, 0x666666].map(c =>
-                    new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, metalness: 0.2 })
-                )
-            };
-        }
-
-        function startGame() {
-            finishedRunners = []; ultimateUsed = false; ultimateActive = false; confirmedRanks = new Set();
-            gameTime = 0; slowMotion = false; slowMotionFactor = 1; currentCameraMode = 'overview';
-            prevCameraMode = 'overview'; cameraChangeTimer = 0; startingSequence = true; raceStarted = false;
-            raceEnded = false; sprintPhaseStarted = false; sprintRunners = [];
-            previousRanks = {}; gapMode = false;
-            gapRunnerA = null; gapRunnerB = null; gameEndScheduled = false; isPaused = false;
-            midBossTriggered = false; midBossActive = false; currentMidBoss = null; midBossMesh = null;
-
-            document.getElementById('rankingContainer').style.opacity = '0';
-            document.getElementById('ultimateAlert').classList.add('hidden');
-            document.getElementById('eventAlert').classList.add('hidden');
-            document.getElementById('countdownAlert').classList.add('hidden');
-            document.getElementById('gapAlert').classList.add('hidden');
-            document.getElementById('sprintScreenEffect').classList.add('hidden');
-            document.getElementById('sprintSpeedLines').classList.add('hidden');
-            document.getElementById('sprintWindEffect').classList.add('hidden');
-            document.getElementById('midbossSplitOverlay').classList.remove('active');
-            document.getElementById('midbossCharacterDisplay').classList.remove('active');
-            document.getElementById('midbossAlert').classList.add('hidden');
-            
-            document.getElementById('midbossCharacterImage').src = '';
-            document.getElementById('sprintCharacterImage').src = '';
-
-            document.getElementById('volumeSlider').value = currentVolume * 100;
-            updateMuteIcon(isMuted ? 0 : currentVolume);
-
-            if (bgm) { 
-                bgm.pause(); 
-                bgm.currentTime = 0;
-                bgm.src = '';
-                bgm = null;
-            }
-            bgm = new Audio('https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/chuntaverse.mp3');
-            bgm.volume = isMuted ? 0 : currentVolume;
-            bgm.load();
-            const playPromise = bgm.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(function(e) { 
-                    console.log('Audio play failed:', e);
-                    document.addEventListener('click', function retryPlay() {
-                        bgm.play().catch(() => {});
-                        document.removeEventListener('click', retryPlay);
-                    }, { once: true });
-                });
-            }
-
-            if (scene) {
-                scene.traverse((object) => {
-                    if (object.geometry) object.geometry.dispose();
-                    if (object.material) {
-                        if (Array.isArray(object.material)) object.material.forEach(m => m.dispose());
-                        else object.material.dispose();
-                    }
-                });
-                while (scene.children.length > 0) scene.remove(scene.children[0]);
-            }
-            if (renderer) renderer.dispose();
-
-            runners = []; obstacles = [];
-            initSharedResources(); initThreeJS(); createTrack(); createRunners(); createObstacles();
-            gameRunning = true; lastTime = 0;
-            runStartingSequence();
-        }
-
-        function runStartingSequence() {
-            const selectedArray = Array.from(selectedMembers);
-            const laneCount = selectedArray.length;
-            const laneWidth = 6;
-            const trackWidth = laneCount * laneWidth;
-            const startX = -trackWidth / 2 + laneWidth / 2;
-            const startPos = new THREE.Vector3(startX - 6, 6, 8);
-            camera.position.copy(startPos); camera.lookAt(startX, 2, 0);
-            camera.lookAtVector = new THREE.Vector3(startX, 2, 0);
-            renderer.render(scene, camera);
-
-            setTimeout(() => {
-                const endX = -trackWidth / 2 + laneWidth / 2 + (laneCount - 1) * laneWidth;
-                const endPos = new THREE.Vector3(endX - 6, 6, 8);
-                const endLookAt = new THREE.Vector3(endX, 2, 0);
-                const startLookAt = camera.lookAtVector.clone();
-                const duration = 5500;
-                const animStartTime = performance.now();
-                function animateSweep() {
-                    const elapsed = performance.now() - animStartTime;
-                    const progress = Math.min(elapsed / duration, 1);
-                    const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-                    camera.position.lerpVectors(startPos, endPos, ease);
-                    const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, endLookAt, ease);
-                    camera.lookAtVector = currentLookAt; camera.lookAt(currentLookAt);
-                    renderer.render(scene, camera);
-                    if (progress < 1) requestAnimationFrame(animateSweep);
-                    else setTimeout(() => { showFullStartingLine(trackWidth, laneWidth, laneCount); }, 500);
-                }
-                animateSweep();
-            }, 500);
-        }
-
-        function showFullStartingLine(trackWidth, laneWidth, laneCount) {
-            const startPos = camera.position.clone();
-            const startLookAt = camera.lookAtVector.clone();
-            const endPos = new THREE.Vector3(0, 18, -40);
-            const endLookAt = new THREE.Vector3(0, 2, 0);
-            const duration = 3500;
-            const animStartTime = performance.now();
-            function animateToFullView() {
-                const elapsed = performance.now() - animStartTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const ease = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-                camera.position.lerpVectors(startPos, endPos, ease);
-                const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, endLookAt, ease);
-                camera.lookAtVector = currentLookAt; camera.lookAt(currentLookAt);
-                renderer.render(scene, camera);
-                if (progress < 1) requestAnimationFrame(animateToFullView);
-                else startCountdown();
-            }
-            animateToFullView();
-        }
-
-        function startCountdown() {
-            const countdownAlert = document.getElementById('countdownAlert');
-            const countdownDiv = countdownAlert.querySelector('div');
-            countdownAlert.classList.remove('hidden');
-            countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
-            countdownDiv.textContent = '제자리에'; countdownDiv.style.color = '#ffffff'; countdownDiv.style.textShadow = 'none';
-            setTimeout(() => {
-                countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
-                countdownDiv.textContent = '준비'; countdownDiv.style.color = '#ffffff'; countdownDiv.style.textShadow = 'none';
-            }, 1000);
-            setTimeout(() => {
-                countdownDiv.classList.remove('countdown-text'); void countdownDiv.offsetWidth; countdownDiv.classList.add('countdown-text');
-                countdownDiv.textContent = '출발!'; countdownDiv.style.color = '#22c55e';
-                countdownDiv.style.textShadow = 'none';
-                startingSequence = false; raceStarted = true;
-                document.getElementById('rankingContainer').style.opacity = '1';
-                lastTime = 0; animate();
-            }, 3000);
-            setTimeout(() => { countdownAlert.classList.add('hidden'); }, 3500);
-        }
-
-        function initThreeJS() {
-            const container = document.getElementById('canvasContainer');
-            const canvas = document.getElementById('gameCanvas');
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1a1a2e);
-            scene.fog = new THREE.Fog(0x1a1a2e, 50, 300);
-            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1500);
-            camera.position.set(0, 30, -20); camera.lookAt(0, 0, 50);
-            camera.lookAtVector = new THREE.Vector3(0, 0, 50);
-            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.sortObjects = true;
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            directionalLight.position.set(50, 100, 50); directionalLight.castShadow = true;
-            directionalLight.shadow.mapSize.width = 1024; directionalLight.shadow.mapSize.height = 1024;
-            directionalLight.shadow.camera.left = -100; directionalLight.shadow.camera.right = 100;
-            directionalLight.shadow.camera.top = 100; directionalLight.shadow.camera.bottom = -100;
-            scene.add(directionalLight);
-            window._dirLight = directionalLight;
-            window.addEventListener('resize', () => {
-                camera.aspect = container.clientWidth / container.clientHeight;
-                camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight);
-            });
-        }
-
-        function createTrack() {
-            const selectedArray = Array.from(selectedMembers);
-            const laneCount = selectedArray.length;
-            const laneWidth = 6;
-            const trackWidth = laneCount * laneWidth;
-            const totalTrackLength = trackLength + 200;
-            const trackGeometry = new THREE.PlaneGeometry(trackWidth + 10, totalTrackLength);
-            const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x1f3b4d });
-            const track = new THREE.Mesh(trackGeometry, trackMaterial);
-            track.rotation.x = -Math.PI / 2; track.position.set(0, -0.1, totalTrackLength / 2 - 100); track.receiveShadow = true;
-            scene.add(track);
-            const lineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
-            for (let i = 0; i <= laneCount; i++) {
-                const lineGeometry = new THREE.PlaneGeometry(0.12, totalTrackLength);
-                const line = new THREE.Mesh(lineGeometry, lineMaterial);
-                line.rotation.x = -Math.PI / 2; line.position.set(-trackWidth / 2 + i * laneWidth, 0.01, totalTrackLength / 2 - 100);
-                scene.add(line);
-            }
-            const finishGeometry = new THREE.PlaneGeometry(trackWidth + 10, 4);
-            const finishMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
-            finishLine = new THREE.Mesh(finishGeometry, finishMaterial);
-            finishLine.rotation.x = -Math.PI / 2; finishLine.position.set(0, 0.02, trackLength);
-            scene.add(finishLine);
-            const startGeometry = new THREE.PlaneGeometry(trackWidth + 10, 3);
-            const startMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 });
-            const startLine = new THREE.Mesh(startGeometry, startMaterial);
-            startLine.rotation.x = -Math.PI / 2; startLine.position.set(0, 0.02, 0);
-            scene.add(startLine);
-        }
-
-        function createRunners() {
-            runners = [];
-            const selectedArray = Array.from(selectedMembers);
-            const shuffledMembers = selectedArray.map(id => members.find(m => m.id === id));
-            for (let i = shuffledMembers.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffledMembers[i], shuffledMembers[j]] = [shuffledMembers[j], shuffledMembers[i]];
-            }
-            const laneCount = selectedArray.length;
-            const laneWidth = 6;
-            const trackWidth = laneCount * laneWidth;
-            shuffledMembers.forEach((member, index) => {
-                const laneX = -trackWidth / 2 + laneWidth / 2 + index * laneWidth;
-                const bodyGroup = new THREE.Group();
-                const runnerColor = new THREE.Color(member.color);
-                const torsoGeom = new THREE.BoxGeometry(2.2, 2.2, 1.4);
-                const preloadedTex = preloadedTextures[member.id];
-                const sideMat = new THREE.MeshStandardMaterial({ color: runnerColor });
-                const topMat = new THREE.MeshStandardMaterial({ color: runnerColor });
-                const bottomMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-                const frontMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: preloadedTex || null });
-                const backMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: preloadedTex || null });
-                const torsoMaterials = [sideMat, sideMat.clone(), topMat, bottomMat, frontMat, backMat];
-                const torso = new THREE.Mesh(torsoGeom, torsoMaterials);
-                torso.position.y = 1.8; torso.castShadow = true; bodyGroup.add(torso);
-                const legGeom = new THREE.BoxGeometry(0.4, 0.9, 0.4);
-                const legMat = new THREE.MeshStandardMaterial({ color: runnerColor });
-                const leftLegGroup = new THREE.Group();
-                const leftLeg = new THREE.Mesh(legGeom, legMat); leftLeg.position.y = -0.45; leftLeg.castShadow = true;
-                leftLegGroup.add(leftLeg); leftLegGroup.position.set(-0.5, 0.9, 0); bodyGroup.add(leftLegGroup);
-                const rightLegGroup = new THREE.Group();
-                const rightLeg = new THREE.Mesh(legGeom, legMat.clone()); rightLeg.position.y = -0.45; rightLeg.castShadow = true;
-                rightLegGroup.add(rightLeg); rightLegGroup.position.set(0.5, 0.9, 0); bodyGroup.add(rightLegGroup);
-                const armGeom = new THREE.BoxGeometry(0.25, 0.8, 0.25);
-                const armMat = new THREE.MeshStandardMaterial({ color: runnerColor });
-                const leftArmGroup = new THREE.Group();
-                const leftArm = new THREE.Mesh(armGeom, armMat); leftArm.position.y = -0.4; leftArm.castShadow = true;
-                leftArmGroup.add(leftArm); leftArmGroup.position.set(-1.3, 2.1, 0); bodyGroup.add(leftArmGroup);
-                const rightArmGroup = new THREE.Group();
-                const rightArm = new THREE.Mesh(armGeom, armMat.clone()); rightArm.position.y = -0.4; rightArm.castShadow = true;
-                rightArmGroup.add(rightArm); rightArmGroup.position.set(1.3, 2.1, 0); bodyGroup.add(rightArmGroup);
-
-                const nameCanvas = document.createElement('canvas');
-                const nameLength = member.name.length;
-                let fontSize, planeWidth, planeHeight;
-                if (nameLength <= 2) { fontSize = 220; planeWidth = 20; planeHeight = 5.5; }
-                else if (nameLength === 3) { fontSize = 220; planeWidth = 20; planeHeight = 5.5; }
-                else { fontSize = 180; planeWidth = 22; planeHeight = 5; }
-                nameCanvas.width = fontSize * 8; nameCanvas.height = fontSize * 2;
-                const nctx = nameCanvas.getContext('2d');
-                nctx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
-                nctx.strokeStyle = 'rgba(0,0,0,0.8)'; nctx.lineWidth = 12;
-                nctx.font = `900 ${fontSize}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
-                nctx.textAlign = 'center'; nctx.textBaseline = 'middle';
-                nctx.strokeText(member.name, nameCanvas.width / 2, nameCanvas.height / 2);
-                nctx.fillStyle = member.color;
-                nctx.font = `900 ${fontSize}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
-                nctx.fillText(member.name, nameCanvas.width / 2, nameCanvas.height / 2);
-                const nameTexture = new THREE.CanvasTexture(nameCanvas);
-                const nameMat = new THREE.MeshBasicMaterial({ map: nameTexture, transparent: true, side: THREE.DoubleSide, depthTest: true, depthWrite: false });
-                const nameGeom = new THREE.PlaneGeometry(planeWidth, planeHeight);
-                const nameMesh = new THREE.Mesh(nameGeom, nameMat);
-                nameMesh.rotation.x = -Math.PI / 2; nameMesh.rotation.z = Math.PI / 2;
-                nameMesh.position.set(laneX, 0.07, -8); scene.add(nameMesh);
-                bodyGroup.position.set(laneX, 0, 0); bodyGroup.castShadow = true; scene.add(bodyGroup);
-                const individualSpeed = 13.3 + Math.random() * 0.4;
-                runners.push({
-                    member, mesh: bodyGroup, nameMesh, torso,
-                    leftArm: leftArmGroup, rightArm: rightArmGroup, leftLeg: leftLegGroup, rightLeg: rightLegGroup,
-                    lane: index, laneX, position: 0, speed: individualSpeed, baseSpeed: individualSpeed,
-                    slowdownTimer: 0, speedBoostTimer: 0, animPhase: Math.random() * Math.PI * 2,
-                    finished: false, finishTime: 0, ultimateActive: false, tiltPhase: Math.random() * Math.PI * 2,
-                    isJumping: false, jumpPhase: 0, jumpHeight: 0, jumpStartPos: 0,
-                    isSprinting: false, sprintSpeed: 0, sprintEffects: null, currentEvent: null,
-                    hurdleFailCount: 0, hurdleFailing: false, hurdleFailTimer: 0, isFailJumping: false, failJumpPhase: 0, currentRank: index + 1,
-                    hasShield: false, shieldCharges: 0, shieldMeshes: [],
-                    isElectrocuted: false, electrocuteTimer: 0, electroAura: null,
-                    isPushedBack: false, pushBackTarget: 0,
-                    shieldProcessedObs: new Set()
-                });
-            });
-        }
-
-        function createMidBossMesh(bossData) {
-            const bodyGroup = new THREE.Group();
-            const bossColor = new THREE.Color(bossData.color);
-            const torsoGeom = new THREE.BoxGeometry(2.2, 2.2, 1.4);
-            const bossTex = preloadedBossTextures[bossData.id];
-            const sideMat = new THREE.MeshStandardMaterial({ color: bossColor });
-            const topMat = new THREE.MeshStandardMaterial({ color: bossColor });
-            const bottomMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-            const frontMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: bossTex || null });
-            const backMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: bossTex || null });
-            const torsoMaterials = [sideMat, sideMat.clone(), topMat, bottomMat, frontMat, backMat];
-            const torso = new THREE.Mesh(torsoGeom, torsoMaterials);
-            torso.position.y = 1.8; torso.castShadow = true; bodyGroup.add(torso);
-
-            const legGeom = new THREE.BoxGeometry(0.4, 0.9, 0.4);
-            const legMat = new THREE.MeshStandardMaterial({ color: bossColor });
-            const leftLeg = new THREE.Mesh(legGeom, legMat); leftLeg.position.set(-0.5, 0.45, 0); bodyGroup.add(leftLeg);
-            const rightLeg = new THREE.Mesh(legGeom, legMat.clone()); rightLeg.position.set(0.5, 0.45, 0); bodyGroup.add(rightLeg);
-
-            const armGeom = new THREE.BoxGeometry(0.25, 0.8, 0.25);
-            const armMat = new THREE.MeshStandardMaterial({ color: bossColor });
-            const leftArm = new THREE.Mesh(armGeom, armMat); leftArm.position.set(-1.3, 1.7, 0); bodyGroup.add(leftArm);
-            const rightArm = new THREE.Mesh(armGeom, armMat.clone()); rightArm.position.set(1.3, 1.7, 0); bodyGroup.add(rightArm);
-
-            const glowGeom = new THREE.SphereGeometry(3, 16, 16);
-            const glowMat = new THREE.MeshBasicMaterial({ 
-                color: bossColor, 
-                transparent: true, 
-                opacity: 0.3,
-                side: THREE.BackSide
-            });
-            const glow = new THREE.Mesh(glowGeom, glowMat);
-            glow.position.y = 1.5;
-            bodyGroup.add(glow);
-
-            return bodyGroup;
-        }
-
-        function createObstacles() {
-            obstacles = [];
-            const selectedArray = Array.from(selectedMembers);
-            const laneCount = selectedArray.length;
-            const laneWidth = 6;
-            const trackWidth = laneCount * laneWidth;
-            const minSpacing = 25;
-            const obsTypes = ['hurdle', 'gravel', 'boost'];
-            let obsIdCounter = 0;
-            for (let lane = 0; lane < laneCount; lane++) {
-                const laneX = -trackWidth / 2 + laneWidth / 2 + lane * laneWidth;
-                const trackStart = 10; const trackEnd = trackLength - 10;
-                const availableLength = trackEnd - trackStart;
-                const totalObstacles = 15;
-                const positions = [];
-                for (let i = 0; i < totalObstacles; i++) {
-                    let attempts = 0; let validPos = false; let newPos;
-                    while (!validPos && attempts < 100) {
-                        newPos = trackStart + Math.random() * availableLength; validPos = true;
-                        for (const existingPos of positions) { if (Math.abs(newPos - existingPos) < minSpacing) { validPos = false; break; } }
-                        attempts++;
-                    }
-                    if (validPos) positions.push(newPos);
-                }
-                for (let i = 0; i < positions.length; i++) {
-                    const zPos = positions[i];
-                    const type = obsTypes[Math.floor(Math.random() * obsTypes.length)];
-                    if (type === 'hurdle') {
-                        const hurdleGroup = new THREE.Group();
-                        const bar = new THREE.Mesh(sharedGeometries.hurdleBar, sharedMaterials.hurdleBar); bar.position.y = 0.7; hurdleGroup.add(bar);
-                        const leftPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole); leftPole.position.set(-1.5, 0.35, 0); hurdleGroup.add(leftPole);
-                        const rightPole = new THREE.Mesh(sharedGeometries.hurdlePole, sharedMaterials.hurdlePole); rightPole.position.set(1.5, 0.35, 0); hurdleGroup.add(rightPole);
-                        const leftReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector); leftReflector.position.set(-1.5, 0.7, 0); hurdleGroup.add(leftReflector);
-                        const rightReflector = new THREE.Mesh(sharedGeometries.hurdleReflector, sharedMaterials.hurdleReflector); rightReflector.position.set(1.5, 0.7, 0); hurdleGroup.add(rightReflector);
-                        hurdleGroup.position.set(laneX, 0, zPos); scene.add(hurdleGroup);
-                        obstacles.push({ type: 'hurdle', mesh: hurdleGroup, lane, zPos, obsId: obsIdCounter++ });
-                    } else if (type === 'gravel') {
-                        const gravelGroup = new THREE.Group();
-                        for (let j = 0; j < 40; j++) {
-                            const size = 0.12 + Math.random() * 0.2;
-                            const matIndex = Math.floor(Math.random() * sharedMaterials.gravelColors.length);
-                            const stone = new THREE.Mesh(sharedGeometries.stone, sharedMaterials.gravelColors[matIndex]);
-                            stone.scale.set(size, size, size);
-                            stone.position.set((Math.random() - 0.5) * 4.2, size / 2, (Math.random() - 0.5) * 4.2);
-                            stone.rotation.set(Math.random() * Math.PI * 2, Math.random() * Math.PI * 2, Math.random() * Math.PI * 2);
-                            stone.castShadow = true; gravelGroup.add(stone);
-                        }
-                        gravelGroup.position.set(laneX, 0, zPos); scene.add(gravelGroup);
-                        obstacles.push({ type: 'gravel', mesh: gravelGroup, lane, zPos, obsId: obsIdCounter++ });
-                    } else {
-                        const boostGroup = new THREE.Group();
-                        const arrow = new THREE.Mesh(sharedGeometries.boostArrow, sharedMaterials.boostArrow);
-                        arrow.rotation.x = -Math.PI / 2; arrow.rotation.z = Math.PI; arrow.position.y = 0.05; boostGroup.add(arrow);
-                        const base = new THREE.Mesh(sharedGeometries.boostBase, sharedMaterials.boostBase);
-                        base.rotation.x = -Math.PI / 2; base.position.y = 0.03; boostGroup.add(base);
-                        const ring = new THREE.Mesh(sharedGeometries.boostRing, sharedMaterials.boostRing);
-                        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; boostGroup.add(ring);
-                        boostGroup.position.set(laneX, 0.05, zPos); scene.add(boostGroup);
-                        obstacles.push({ type: 'boost', mesh: boostGroup, lane, zPos, obsId: obsIdCounter++ });
-                    }
-                }
-            }
-        }
-
-        function checkMidBossEvent() {
-            if (midBossTriggered || !raceStarted || raceEnded) return;
-            
-            const currentBgmTime = bgm ? bgm.currentTime : 0;
-            
-            if (currentBgmTime >= 27 && currentBgmTime < 28 && !midBossTriggered) {
-                midBossTriggered = true;
-                triggerMidBossEvent();
-            }
-        }
-
-        function triggerMidBossEvent() {
-            isPaused = true;
-            midBossActive = true;
-
-            if (currentCameraMode === 'side') {
-                currentCameraMode = Math.random() < 0.5 ? 'overview' : 'front';
-                prevCameraMode = currentCameraMode;
-                // 카메라 위치 즉시 적용
-                const leader = runners.reduce((a, b) => a.position > b.position ? a : b);
-                if (currentCameraMode === 'overview') {
-                    camera.position.set(25, 40, leader.position - 25);
-                    camera.lookAt(5, 0, leader.position);
-                } else {
-                    camera.position.set(10, 6, leader.position + 20);
-                    camera.lookAt(leader.laneX, 2, leader.position);
-                }
-            }
-
-            const bossIndex = Math.floor(Math.random() * 3);
-            currentMidBoss = midBosses[bossIndex];
-
-            midBossMesh = createMidBossMesh(currentMidBoss);
-            midBossMesh.position.set(0, 15, trackLength - 20);
-            midBossMesh.scale.set(2, 2, 2);
-            scene.add(midBossMesh);
-
-            document.getElementById('midbossSplitOverlay').classList.add('active');
-            
-            const characterDisplay = document.getElementById('midbossCharacterDisplay');
-            const characterImage = document.getElementById('midbossCharacterImage');
-            const characterText = document.getElementById('midbossCharacterText');
-            
-            const img = new Image();
-            img.onload = function() {
-                characterImage.src = currentMidBoss.img;
-                characterText.textContent = currentMidBoss.name;
-                characterText.style.color = currentMidBoss.color;
-                characterDisplay.classList.add('active');
-            };
-            img.src = currentMidBoss.img;
-
-            if (bgm) bgm.volume = bgm.volume * 0.3;
-
-            setTimeout(() => {
-                activateMidBossEffect();
-            }, 3000);
-        }
-
-        function activateMidBossEffect() {
-            document.getElementById('midbossSplitOverlay').classList.remove('active');
-            document.getElementById('midbossCharacterDisplay').classList.remove('active');
-
-            if (midBossMesh) {
-                scene.remove(midBossMesh);
-                midBossMesh = null;
-            }
-
-            if (bgm) bgm.volume = isMuted ? 0 : currentVolume;
-
-            switch(currentMidBoss.id) {
-                case 'authority':
-                    executeAuthorityEffect();
-                    break;
-                case 'buo':
-                    executeBuoEffect();
-                    break;
-                case 'thunder':
-                    executeThunderEffect();
-                    break;
-            }
-        }
-
-        function executeAuthorityEffect() {
-            const eligibleRunners = runners.filter(r => !r.member.isBoss && !r.finished);
-            if (eligibleRunners.length === 0) {
-                finishMidBossEvent();
-                return;
-            }
-
-            let numToPush;
-            if (eligibleRunners.length === 1) {
-                numToPush = 1;
-            } else if (eligibleRunners.length === 2) {
-                numToPush = Math.random() < 0.7 ? 2 : 1;
-            } else {
-                const rand = Math.random();
-                if (rand < 0.5) {
-                    numToPush = 3;
-                } else if (rand < 0.8) {
-                    numToPush = 2;
-                } else {
-                    numToPush = 1;
-                }
-                numToPush = Math.min(numToPush, eligibleRunners.length);
-            }
-
-            const shuffled = shuffle([...eligibleRunners]);
-            const targetRunners = shuffled.slice(0, numToPush);
-
-            let pushIndex = 0;
-            
-            function pushNextRunner() {
-                if (pushIndex >= targetRunners.length) {
-                    finishMidBossEvent();
-                    return;
-                }
-
-                const runner = targetRunners[pushIndex];
-                
-                const midbossAlert = document.getElementById('midbossAlert');
-                midbossAlert.querySelector('div').innerHTML = `<span style="color: ${runner.member.color};">${runner.member.name}</span>&nbsp;<span style="color: ${runner.member.color};">천타버스 나가 줄 수 있어?</span>`;
-                midbossAlert.classList.remove('hidden');
-
-                const closeupPos = new THREE.Vector3(runner.laneX + 4, 5, runner.position + 8);
-                const closeupLookAt = new THREE.Vector3(runner.laneX, 2, runner.position);
-                
-                const startPos = camera.position.clone();
-                const startLookAt = camera.lookAtVector ? camera.lookAtVector.clone() : new THREE.Vector3();
-                const duration = 500;
-                const animStart = performance.now();
-
-                function animateCloseup() {
-                    const elapsed = performance.now() - animStart;
-                    const progress = Math.min(elapsed / duration, 1);
-                    camera.position.lerpVectors(startPos, closeupPos, progress);
-                    const currentLookAt = new THREE.Vector3().lerpVectors(startLookAt, closeupLookAt, progress);
-                    camera.lookAtVector = currentLookAt;
-                    camera.lookAt(currentLookAt);
-                    renderer.render(scene, camera);
-
-                    if (progress < 1) {
-                        requestAnimationFrame(animateCloseup);
-                    } else {
-                        const pushDistance = 15 + Math.random() * 10;
-                        const targetPosition = Math.max(0, runner.position - pushDistance);
-                        
-                        runner.isPushedBack = true;
-                        runner.pushBackTarget = targetPosition;
-                        runner.pushBackStartPos = runner.position;
-                        runner.pushBackProgress = 0;
-                        
-                        const pushDuration = 1000;
-                        const pushStart = performance.now();
-                        
-                        function animatePushBack() {
-                            const elapsed = performance.now() - pushStart;
-                            const progress = Math.min(elapsed / pushDuration, 1);
-                            const eased = 1 - Math.pow(1 - progress, 3);
-                            
-                            runner.position = runner.pushBackStartPos + (runner.pushBackTarget - runner.pushBackStartPos) * eased;
-                            runner.mesh.position.z = runner.position;
-                            
-                            runner.mesh.rotation.z = Math.sin(progress * Math.PI * 4) * 0.3 * (1 - progress);
-                            
-                            const newLookAt = new THREE.Vector3(runner.laneX, 2, runner.position);
-                            camera.lookAtVector = newLookAt;
-                            camera.lookAt(newLookAt);
-                            camera.position.z = runner.position + 8;
-                            
-                            renderer.render(scene, camera);
-                            
-                            if (progress < 1) {
-                                requestAnimationFrame(animatePushBack);
-                            } else {
-                                runner.isPushedBack = false;
-                                runner.mesh.rotation.z = 0;
-                                
-                                setTimeout(() => {
-                                    midbossAlert.classList.add('hidden');
-                                    pushIndex++;
-                                    setTimeout(pushNextRunner, 500);
-                                }, 500);
-                            }
-                        }
-                        animatePushBack();
-                    }
-                }
-                animateCloseup();
-            }
-
-            pushNextRunner();
-        }
-
-        function executeBuoEffect() {
-            const eligibleRunners = runners.filter(r => !r.member.isBoss && !r.finished);
-            if (eligibleRunners.length === 0) {
-                finishMidBossEvent();
-                return;
-            }
-
-            const numToShield = Math.max(1, Math.ceil(eligibleRunners.length / 2));
-            const shuffled = shuffle([...eligibleRunners]);
-            const targetRunners = shuffled.slice(0, numToShield);
-
-            const midbossAlert = document.getElementById('midbossAlert');
-            const names = targetRunners.map(r => `<span style="color: ${r.member.color};">${r.member.name}</span>`).join('&nbsp;');
-            midbossAlert.querySelector('div').innerHTML = `${names}&nbsp;<span style="color: #d1d5db;">보호막 획득!</span>`;
-            midbossAlert.classList.remove('hidden');
-
-            Promise.all(targetRunners.map(runner => pourLiquidAndShield(runner))).then(() => {
-                setTimeout(() => {
-                    midbossAlert.classList.add('hidden');
-                    finishMidBossEvent();
-                }, 1000);
-            });
-        }
-
-        function pourLiquidAndShield(runner) {
-            return new Promise((resolve) => {
-                const startY = 30;
-                const endY = 1.5;
-                const totalDist = startY - endY;
-                const liquidColor = 0xffa500;
-
-                const geo = new THREE.CylinderGeometry(0.3, 0.5, 1, 8);
-                geo.translate(0, -0.5, 0);
-                
-                const mat = new THREE.MeshBasicMaterial({ 
-                    color: liquidColor, 
-                    transparent: true, 
-                    opacity: 0.8 
-                });
-                const stream = new THREE.Mesh(geo, mat);
-                stream.position.set(0, startY, 0);
-                runner.mesh.add(stream);
-
-                const pourDuration = 600;
-                const startTime = performance.now();
-
-                function animatePour() {
-                    const now = performance.now();
-                    const p = Math.min((now - startTime) / pourDuration, 1);
-                    const ease = p * p;
-
-                    const currentLength = totalDist * ease;
-                    stream.scale.set(1, currentLength, 1);
-                    renderer.render(scene, camera);
-
-                    if (p < 1) {
-                        requestAnimationFrame(animatePour);
-                    } else {
-                        createSplashEffect(runner, liquidColor);
-                        createShield(runner);
-
-                        const fadeDuration = 300;
-                        const fadeStart = performance.now();
-                        
-                        function animateFade() {
-                            const fp = Math.min((performance.now() - fadeStart) / fadeDuration, 1);
-                            stream.material.opacity = 0.8 * (1 - fp);
-                            stream.scale.set(1 - fp * 0.8, totalDist, 1 - fp * 0.8);
-                            renderer.render(scene, camera);
-                            
-                            if (fp < 1) {
-                                requestAnimationFrame(animateFade);
-                            } else {
-                                runner.mesh.remove(stream);
-                                stream.geometry.dispose();
-                                stream.material.dispose();
-                                resolve();
-                            }
-                        }
-                        animateFade();
-                    }
-                }
-                animatePour();
-            });
-        }
-
-        function createSplashEffect(runner, color) {
-            const particleCount = 20;
-            const geo = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-            const mat = new THREE.MeshBasicMaterial({ color: color });
-            
-            for (let i = 0; i < particleCount; i++) {
-                const mesh = new THREE.Mesh(geo, mat);
-                mesh.position.set(0, 1.5, 0);
-                mesh.userData.velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.4,
-                    Math.random() * 0.4 + 0.2,
-                    (Math.random() - 0.5) * 0.4
-                );
-                runner.mesh.add(mesh);
-                
-                const duration = 500;
-                const start = performance.now();
-                
-                function animateParticle() {
-                    const p = Math.min((performance.now() - start) / duration, 1);
-                    
-                    mesh.position.add(mesh.userData.velocity);
-                    mesh.userData.velocity.y -= 0.02;
-                    mesh.rotation.x += 0.1;
-                    mesh.rotation.y += 0.1;
-                    mesh.scale.setScalar(1 - p);
-                    
-                    if (p < 1) {
-                        requestAnimationFrame(animateParticle);
-                    } else {
-                        runner.mesh.remove(mesh);
-                    }
-                }
-                animateParticle();
-            }
-        }
-
-        function createShield(runner) {
-            runner.hasShield = true;
-            runner.shieldCharges = 3;
-            runner.shieldMeshes = [];
-            runner.shieldProcessedObs = new Set();
-
-            for (let i = 0; i < 3; i++) {
-                const targetRadius = 2 + (i * 0.4);
-                const shieldGeom = new THREE.SphereGeometry(targetRadius, 16, 16);
-                const opacity = 0.25 - (i * 0.05);
-                const shieldMat = new THREE.MeshBasicMaterial({
-                    color: 0xffa500,
-                    transparent: true,
-                    opacity: opacity,
-                    side: THREE.DoubleSide,
-                    depthWrite: false
-                });
-                const shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
-                shieldMesh.position.y = 1.5;
-                shieldMesh.scale.set(0, 0, 0);
-                runner.mesh.add(shieldMesh);
-                runner.shieldMeshes.push(shieldMesh);
-                
-                const dur = 400;
-                const start = performance.now();
-                function animateShield() {
-                    const p = Math.min((performance.now() - start) / dur, 1);
-                    const s = p < 1 ? p * 1.1 : 1; 
-                    const elastic = p === 1 ? 1 : 1 - Math.pow(2, -10 * p) * Math.cos((p * 10) * Math.PI / 3);
-                    shieldMesh.scale.set(elastic, elastic, elastic);
-                    renderer.render(scene, camera);
-                    if (p < 1) requestAnimationFrame(animateShield);
-                }
-                animateShield();
-            }
-        }
-
-        function executeThunderEffect() {
-            const activeRunners = runners.filter(r => !r.finished);
-            if (activeRunners.length === 0) {
-                finishMidBossEvent();
-                return;
-            }
-
-            const immuneRunner = activeRunners[Math.floor(Math.random() * activeRunners.length)];
-            const targetRunners = activeRunners.filter(r => r !== immuneRunner);
-
-            const flash = document.getElementById('lightningFlash');
-            flash.classList.remove('hidden');
-            setTimeout(() => flash.classList.add('hidden'), 100);
-
-            const midbossAlert = document.getElementById('midbossAlert');
-            midbossAlert.querySelector('div').innerHTML = `<span style="color: ${immuneRunner.member.color};">${immuneRunner.member.name}</span>&nbsp;<span style="color: #d1d5db;">제외 전원 감전!</span>`;
-            midbossAlert.classList.remove('hidden');
-
-            targetRunners.forEach(runner => {
-                runner.isElectrocuted = true;
-                runner.electrocuteTimer = 2.0;
-
-                createLightningEffectFlipped(runner);
-                setTimeout(() => { if (runner.isElectrocuted) createElectroAura(runner); }, 1500);
-            });
-
-            setTimeout(() => {
-                midbossAlert.classList.add('hidden');
-                finishMidBossEvent();
-            }, 2000);
-        }
-
-        function createShieldPopEffect(runner) {
-            // 가장 바깥쪽 구체(반지름 2.8)가 커지면서 사라짐
-            const geo = new THREE.SphereGeometry(2.8, 16, 16);
-            const mat = new THREE.MeshBasicMaterial({ color: 0xffa500, transparent: true, opacity: 0.12, side: THREE.FrontSide, depthWrite: false });
-            const sphere = new THREE.Mesh(geo, mat);
-            runner.mesh.add(sphere);
-
-            const startTime = performance.now();
-            function animatePop() {
-                const p = Math.min((performance.now() - startTime) / 400, 1);
-                const scale = 1 + p * 1.5;
-                sphere.scale.set(scale, scale, scale);
-                sphere.material.opacity = 0.25 * (1 - p);
-                if (p < 1) requestAnimationFrame(animatePop);
-                else {
-                    runner.mesh.remove(sphere);
-                    sphere.geometry.dispose();
-                    sphere.material.dispose();
-                }
-            }
-            animatePop();
-        }
-
-        function createElectroAura(runner) {
-            const auraGroup = new THREE.Group();
-
-            const sparkCount = 24;
-            const sparksGeo = new THREE.BufferGeometry();
-            const positions = new Float32Array(sparkCount * 3);
-            for (let i = 0; i < sparkCount; i++) {
-                const angle = (i / sparkCount) * Math.PI * 2;
-                const r = 1.8 + Math.random() * 0.6;
-                positions[i * 3]     = Math.cos(angle) * r;
-                positions[i * 3 + 1] = 0.5 + Math.random() * 2.5;
-                positions[i * 3 + 2] = Math.sin(angle) * r;
-            }
-            sparksGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            const sparksMat = new THREE.PointsMaterial({ color: 0xffee00, size: 0.3, transparent: true, opacity: 0.9, depthWrite: false });
-            auraGroup.add(new THREE.Points(sparksGeo, sparksMat));
-
-            runner.mesh.add(auraGroup);
-            runner.electroAura = auraGroup;
-        }
-
-        function createLightningEffectFlipped(runner) {
-            function buildBolt(startY, endY, zigzag) {
-                const points = [];
-                const segments = 10;
-                let cx = 0, cz = 0;
-                for (let i = 0; i <= segments; i++) {
-                    const y = startY + (endY - startY) * (i / segments);
-                    if (i > 0 && i < segments) {
-                        cx += (Math.random() - 0.5) * zigzag;
-                        cz += (Math.random() - 0.5) * zigzag;
-                    }
-                    // 마지막 3 세그먼트는 (0,0)으로 수렴 - 반드시 정수리에 꽂히도록
-                    const convergeFactor = Math.max(0, (i - (segments - 3)) / 3);
-                    points.push(new THREE.Vector3(cx * (1 - convergeFactor), y, cz * (1 - convergeFactor)));
-                }
-                return new THREE.CatmullRomCurve3(points);
-            }
-
-            const strikeGroup = new THREE.Group();
-            strikeGroup.position.set(runner.laneX, 0, runner.position);
-
-            const mainCurve = buildBolt(25, 3.0, 1.2);
-            const mainGeo = new THREE.TubeGeometry(mainCurve, 20, 0.12, 6, false);
-            const mainMat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 1.0 });
-            strikeGroup.add(new THREE.Mesh(mainGeo, mainMat));
-
-            const glowGeo = new THREE.TubeGeometry(mainCurve, 20, 0.35, 6, false);
-            const glowMat = new THREE.MeshBasicMaterial({ color: 0xffdd00, transparent: true, opacity: 0.35 });
-            strikeGroup.add(new THREE.Mesh(glowGeo, glowMat));
-
-            for (let b = 0; b < 3; b++) {
-                const branchCurve = buildBolt(12 + Math.random() * 8, 2.5 + Math.random() * 1.5, 1.8);
-                const branchGeo = new THREE.TubeGeometry(branchCurve, 10, 0.06, 5, false);
-                const branchMat = new THREE.MeshBasicMaterial({ color: 0xffee44, transparent: true, opacity: 0.7 });
-                const branchMesh = new THREE.Mesh(branchGeo, branchMat);
-                strikeGroup.add(branchMesh);
-            }
-
-            scene.add(strikeGroup);
-
-            const strikeStart = performance.now();
-            const strikeDuration = 1500;
-            let lastFlicker = 0;
-            function animateStrike() {
-                const now = performance.now();
-                const p = Math.min((now - strikeStart) / strikeDuration, 1);
-                if (p < 0.5) {
-                    if (now - lastFlicker > 80) {
-                        strikeGroup.visible = Math.random() > 0.25;
-                        lastFlicker = now;
-                    }
-                } else {
-                    strikeGroup.visible = true;
-                    const fadeP = (p - 0.5) / 0.5;
-                    strikeGroup.children.forEach(child => { child.material.opacity = child.material.opacity * (1 - fadeP * 0.06); });
-                }
-                if (p < 1) requestAnimationFrame(animateStrike);
-                else { scene.remove(strikeGroup); strikeGroup.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); }
-            }
-            animateStrike();
-
-            // 감전 아우라 없음 — 타격 이펙트만
-            runner.lightningMesh = null;
-        }
-
-        function finishMidBossEvent() {
-            midBossActive = false;
-            isPaused = false;
-        }
-
-        function updateShieldsAndElectrocution(delta) {
-            runners.forEach(runner => {
-                if (runner.hasShield) {
-                    if (runner.shieldCharges <= 0) {
-                        runner.hasShield = false;
-                        runner.shieldMeshes.forEach(mesh => {
-                            runner.mesh.remove(mesh);
-                            mesh.geometry.dispose();
-                            mesh.material.dispose();
-                        });
-                        runner.shieldMeshes = [];
-                    } else {
-                        runner.shieldMeshes.forEach((mesh, index) => {
-                            // index 0=가장 작음, 2=가장 큼 → 큰 것부터 없어지도록 역순 비교
-                            const reverseIndex = runner.shieldMeshes.length - 1 - index;
-                            if (reverseIndex < runner.shieldCharges) {
-                                mesh.visible = true;
-                                mesh.rotation.y += delta * (2 + index * 0.5);
-                                mesh.material.opacity = (0.25 - (index * 0.05)) + Math.sin(gameTime * 5) * 0.05;
-                            } else {
-                                mesh.visible = false;
-                            }
-                        });
-                    }
-                }
-
-                if (runner.isElectrocuted) {
-                    runner.electrocuteTimer -= delta;
-                    if (runner.electrocuteTimer <= 0) {
-                        runner.isElectrocuted = false;
-                        runner.speed = runner.baseSpeed;
-                        if (runner.lightningMesh) {
-                            runner.mesh.remove(runner.lightningMesh);
-                            runner.lightningMesh.traverse(child => {
-                                if (child.geometry) child.geometry.dispose();
-                                if (child.material) child.material.dispose();
-                            });
-                            runner.lightningMesh = null;
-                        }
-                        if (runner.electroAura) {
-                            runner.mesh.remove(runner.electroAura);
-                            runner.electroAura.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); });
-                            runner.electroAura = null;
-                        }
-                    } else if (runner.electroAura) {
-                        // 스파크 회전 + 깜빡임
-                        runner.electroAura.rotation.y += delta * 3;
-                        runner.electroAura.children.forEach((child, i) => {
-                            if (child.isPoints) child.material.opacity = 0.5 + Math.sin(gameTime * 15 + i) * 0.4;
-                            else child.material.opacity = 0.3 + Math.sin(gameTime * 10) * 0.2;
-                        });
-                    }
-                }
-            });
-        }
-
-        function triggerSprintPhase() {
-            if (sprintPhaseStarted || ultimateUsed || !sprintEnabled) return;
-            sprintPhaseStarted = true; ultimateUsed = true; ultimateActive = true;
-            isPaused = true;
-
-            const activeRunners = runners.filter(r => !r.finished);
-            if (activeRunners.length === 0) return;
-
-            const sortedByPosition = [...activeRunners].sort((a, b) => b.position - a.position);
-
-            // 탈락권 러너만 대상 (passCount 이후)
-            const failRunners = sortedByPosition.slice(passCount);
-
-            // 탈락권 내에서 꼴찌일수록 높은 가중치
-            const weights = [];
-            failRunners.forEach((runner, index) => {
-                weights.push({ runner, weight: Math.pow(index + 1, 2) });
-            });
-
-            let randomValue = Math.random() * weights.reduce((sum, item) => sum + item.weight, 0);
-            let selectedIndex = 0;
-            for (let j = 0; j < weights.length; j++) { randomValue -= weights[j].weight; if (randomValue <= 0) { selectedIndex = j; break; } }
-            const mainSprintRunner = weights[selectedIndex].runner;
-            sprintRunners = [mainSprintRunner];
-
-            const mainSprintColor = mainSprintRunner.member.color;
-
-            document.getElementById('sprintSplitOverlay').classList.add('active');
-            const characterDisplay = document.getElementById('sprintCharacterDisplay');
-            
-            characterDisplay.innerHTML = `
-                <img id="sprintCharacterImage" class="sprint-character-image" src="${mainSprintRunner.member.imgPng}" alt="스프린트 캐릭터">
-                <div id="sprintCharacterText" class="sprint-character-text" style="color: ${mainSprintColor};">${mainSprintRunner.member.name} 막판 스퍼트!</div>
-            `;
-            
-            characterDisplay.classList.add('active');
-
-            if (bgm) { bgm.volume = bgm.volume * 0.3; }
-
-            setTimeout(() => {
-                isPaused = false;
-                document.getElementById('sprintSplitOverlay').classList.remove('active');
-                document.getElementById('sprintCharacterDisplay').classList.remove('active');
-                
-                characterDisplay.innerHTML = `
-                    <img id="sprintCharacterImage" class="sprint-character-image" src="" alt="스프린트 캐릭터">
-                    <div id="sprintCharacterText" class="sprint-character-text"></div>
-                `;
-                
-                // sprintScreenEffect disabled
-                document.getElementById('sprintSpeedLines').classList.remove('hidden');
-                document.getElementById('sprintWindEffect').classList.remove('hidden');
-
-                if (bgm) bgm.volume = isMuted ? 0 : currentVolume;
-
-                sprintRunners.forEach(runner => {
-                    runner.isSprinting = true; runner.ultimateActive = true;
-                    // 합격컷 마지막 합격자 기준으로 거리 계산
-                    const cutoffRunner = sortedByPosition[passCount - 1];
-                    const cutoffPos = cutoffRunner ? cutoffRunner.position : runners.reduce((max, r) => Math.max(max, r.position), 0);
-                    const distToCutoff = cutoffPos - runner.position;
-                    const cutoffRemaining = trackLength - cutoffPos; // 합격컷 러너의 실제 남은 거리
-                    const boostFactor = 1.0 + (distToCutoff / cutoffRemaining);
-                    runner.sprintSpeed = runner.baseSpeed * boostFactor;
-                    addSprintVisualEffects(runner);
-                });
-
-                showUltimate(`${mainSprintRunner.member.name} 막판 스퍼트!`, mainSprintColor);
-                createWindEffect();
-
-            }, 1500);
-        }
-
-        function createWindEffect() {
-            const windContainer = document.getElementById('sprintWindEffect');
-            windContainer.innerHTML = '';
-            const numLines = 12;
-            for (let i = 0; i < numLines; i++) {
-                const line = document.createElement('div'); line.className = 'wind-line';
-                const topPos = Math.random() * 100; const delay = Math.random() * 2;
-                const duration = 0.2 + Math.random() * 0.3; const opacity = 0.2 + Math.random() * 0.4;
-                const height = 1 + Math.random() * 3;
-                line.style.top = `${topPos}%`; line.style.left = '100%';
-                line.style.width = `${20 + Math.random() * 40}px`; line.style.height = `${height}px`;
-                line.style.opacity = opacity; line.style.animationDelay = `${delay}s`;
-                line.style.animationDuration = `${duration}s`;
-                windContainer.appendChild(line);
-            }
-        }
-
-        function addSprintVisualEffects(runner) {
-            const effectGroup = new THREE.Group();
-            const color = new THREE.Color(runner.member.color);
-            const trailCount = 5; const trails = [];
-            const trailMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
-            for (let i = 0; i < trailCount; i++) {
-                const angle = (i / trailCount) * Math.PI * 2;
-                const radius = 1.2 + Math.random() * 0.5;
-                const trail = new THREE.Mesh(sharedGeometries.trailPlane, trailMat.clone());
-                trail.position.set(Math.cos(angle) * radius, 1.2 + Math.sin(angle) * 0.8, -3);
-                trail.scale.y = 6 + Math.random() * 4; trail.rotation.x = Math.PI / 2;
-                trail.userData = { angle, radius, baseZ: -3, phase: Math.random() * Math.PI * 2 };
-                effectGroup.add(trail); trails.push(trail);
-            }
-            const particleCount = 15; const particlePositions = new Float32Array(particleCount * 3);
-            const particleVelocities = [];
-            for (let i = 0; i < particleCount; i++) {
-                particlePositions[i * 3] = (Math.random() - 0.5) * 2.5;
-                particlePositions[i * 3 + 1] = 0.5 + Math.random() * 2;
-                particlePositions[i * 3 + 2] = -2 - Math.random() * 10;
-                particleVelocities.push({ z: -(20 + Math.random() * 15) });
-            }
-            const particleGeom = new THREE.BufferGeometry();
-            particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-            const particleMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
-            const particles = new THREE.Points(particleGeom, particleMat); effectGroup.add(particles);
-            const ringMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
-            const ring = new THREE.Mesh(sharedGeometries.boostRing, ringMat);
-            ring.rotation.x = -Math.PI / 2; ring.position.y = 0.1;
-            ring.userData = { scale: 1, opacity: 0.4 }; effectGroup.add(ring);
-            runner.mesh.add(effectGroup);
-            runner.sprintEffects = { effectGroup, trails, particles, particleVelocities, ring, time: 0 };
-        }
-
-        function removeSprintVisualEffects(runner) {
-            if (runner.sprintEffects) {
-                runner.mesh.remove(runner.sprintEffects.effectGroup);
-                runner.sprintEffects.trails.forEach(t => { t.material.dispose(); });
-                runner.sprintEffects.particles.geometry.dispose();
-                runner.sprintEffects.particles.material.dispose();
-                runner.sprintEffects.ring.material.dispose();
-                runner.sprintEffects = null;
-            }
-        }
-
-        function updateSprintEffects(runner, delta) {
-            if (!runner.sprintEffects) return;
-            const effects = runner.sprintEffects; effects.time += delta;
-            effects.trails.forEach((trail) => {
-                const pulse = 0.5 + Math.sin(effects.time * 8 + trail.userData.phase) * 0.3;
-                trail.material.opacity = pulse;
-            });
-            const positions = effects.particles.geometry.attributes.position.array;
-            for (let i = 0; i < effects.particleVelocities.length; i++) {
-                positions[i * 3 + 2] += effects.particleVelocities[i].z * delta * 3;
-                if (positions[i * 3 + 2] < -14) {
-                    positions[i * 3] = (Math.random() - 0.5) * 2.5;
-                    positions[i * 3 + 1] = 0.5 + Math.random() * 2;
-                    positions[i * 3 + 2] = -1;
-                }
-            }
-            effects.particles.geometry.attributes.position.needsUpdate = true;
-            effects.ring.userData.scale += delta * 4; effects.ring.userData.opacity -= delta * 0.8;
-            if (effects.ring.userData.opacity <= 0) { effects.ring.userData.scale = 1; effects.ring.userData.opacity = 0.5; }
-            effects.ring.scale.set(effects.ring.userData.scale, effects.ring.userData.scale, 1);
-            effects.ring.material.opacity = Math.max(0, effects.ring.userData.opacity);
-        }
-
-        function updateRunners(delta) {
-            if (!raceStarted) return;
-            if (isPaused) return;
-            if (raceEnded) {
-                runners.forEach(runner => {
-                    const animSpeed = 5; runner.animPhase += delta * animSpeed;
-                    const armSwing = Math.sin(runner.animPhase) * 0.2;
-                    const legSwing = Math.sin(runner.animPhase) * 0.1;
-                    runner.leftArm.rotation.x = armSwing; runner.rightArm.rotation.x = -armSwing;
-                    runner.leftLeg.rotation.x = -legSwing; runner.rightLeg.rotation.x = legSwing;
-                    if (!runner.isJumping) runner.mesh.position.y = Math.abs(Math.sin(runner.animPhase * 2)) * 0.05;
-                });
-                return;
-            }
-            const effectiveDelta = delta * slowMotionFactor;
-            gameTime += effectiveDelta;
-
-            updateShieldsAndElectrocution(effectiveDelta);
-
-            const leader = runners.reduce((a, b) => (a.position > b.position ? a : b));
-            const leaderProgress = leader.position / trackLength;
-            if (leaderProgress > 0.75 && !sprintPhaseStarted && !ultimateUsed && sprintEnabled) triggerSprintPhase();
-
-            runners.forEach(runner => {
-                runner.nameMesh.position.z = runner.position - 8;
-                if (runner.isJumping) {
-                    runner.jumpPhase += effectiveDelta * 15;
-                    if (runner.jumpPhase < Math.PI) { runner.jumpHeight = Math.sin(runner.jumpPhase) * 2.5; runner.mesh.position.y = runner.jumpHeight; }
-                    else { runner.isJumping = false; runner.jumpHeight = 0; runner.mesh.position.y = 0; }
-                }
-                if (runner.isFailJumping) {
-                    runner.failJumpPhase += effectiveDelta * 6;
-                    const stumble = Math.sin(runner.failJumpPhase) * 0.6;
-                    runner.mesh.rotation.x = stumble;
-                    if (runner.failJumpPhase >= Math.PI) {
-                        runner.isFailJumping = false;
-                        runner.failJumpPhase = 0;
-                        runner.mesh.rotation.x = 0;
-                    }
-                }
-                if (!runner.finished) {
-                    obstacles.forEach(obs => {
-                        const distanceToObs = obs.zPos - runner.position;
-                        if (obs.lane === runner.lane && Math.abs(distanceToObs) < 2.5) {
-                            if (runner.shieldProcessedObs.has(obs.obsId)) {
-                                return;
-                            }
-
-                            if (obs.type === 'hurdle' && !runner.isJumping && !runner.hurdleFailing && runner.slowdownTimer <= 0) {
-                                if (distanceToObs > 0 && distanceToObs < 2) {
-                                    if (runner.hasShield && runner.shieldCharges > 0) {
-                                        runner.shieldProcessedObs.add(obs.obsId);
-                                        runner.shieldCharges--;
-                                        runner.hurdleFailCount = 0;
-                                        runner.hurdleFailing = false;
-                                        createShieldPopEffect(runner);
-                                    } else {
-                                        runner.isJumping = true; runner.jumpPhase = 0;
-                                        const baseSuccessRate = 0.4; const bonusFromFails = runner.hurdleFailCount * 0.15;
-                                        const successRate = Math.min(1.0, baseSuccessRate + bonusFromFails);
-                                        if (Math.random() < successRate) {
-                                            runner.hurdleFailCount = 0;
-                                            runner.hurdleFailing = false;
-                                        } else {
-                                            runner.isJumping = false;
-                                            runner.isFailJumping = true;
-                                            runner.failJumpPhase = 0;
-                                            runner.hurdleFailTimer = 0.5;
-                                            runner.speed = 0;
-                                            runner.hurdleFailing = true;
-                                            runner.hurdleFailCount++;
-                                        }
-                                    }
-                                }
-                            } else if (obs.type === 'gravel' && runner.slowdownTimer <= 0 && !runner.isJumping) {
-                                if (Math.abs(distanceToObs) < 2) {
-                                    if (runner.hasShield && runner.shieldCharges > 0) {
-                                        runner.shieldProcessedObs.add(obs.obsId);
-                                        runner.shieldCharges--;
-                                        createShieldPopEffect(runner);
-                                    } else {
-                                        const activeSpeed = runner.isSprinting ? runner.sprintSpeed : runner.baseSpeed;
-                                        runner.slowdownTimer = 1.0; runner.speed = activeSpeed * 0.5; runner.tiltPhase = 0;
-                                    }
-                                }
-                            } else if (obs.type === 'boost' && runner.speedBoostTimer <= 0 && !runner.isJumping) {
-                                if (Math.abs(distanceToObs) < 1.5) {
-                                    const activeSpeed = runner.isSprinting ? runner.sprintSpeed : runner.baseSpeed;
-                                    runner.speedBoostTimer = 1.0; runner.speed = activeSpeed * 1.5;
-                                }
-                            }
-                        }
-                    });
-                }
-                if (runner.hurdleFailing && runner.hurdleFailTimer > 0) {
-                    runner.hurdleFailTimer -= effectiveDelta;
-                    if (runner.hurdleFailTimer <= 0) { runner.hurdleFailing = false; runner.mesh.rotation.x = 0; runner.speed = runner.baseSpeed; if (runner.isSprinting) runner.speed = runner.sprintSpeed; }
-                }
-                if (runner.slowdownTimer > 0) {
-                    runner.slowdownTimer -= effectiveDelta;
-                    if (runner.slowdownTimer <= 0) { runner.speed = runner.baseSpeed; if (runner.isSprinting) runner.speed = runner.sprintSpeed; }
-                }
-                if (runner.speedBoostTimer > 0) {
-                    runner.speedBoostTimer -= effectiveDelta;
-                    if (runner.speedBoostTimer <= 0) { runner.speed = runner.baseSpeed; if (runner.isSprinting) runner.speed = runner.sprintSpeed; }
-                }
-                let currentSpeed = runner.speed;
-                if (runner.isSprinting && runner.slowdownTimer <= 0 && runner.speedBoostTimer <= 0 && !runner.hurdleFailing) currentSpeed = runner.sprintSpeed;
-                if (runner.isElectrocuted) currentSpeed = runner.baseSpeed * 0.3;
-                if (!runner.isJumping && !runner.isPushedBack) runner.position += currentSpeed * effectiveDelta;
-                else if (!runner.isPushedBack) runner.position += currentSpeed * effectiveDelta * 0.8;
-                runner.mesh.position.z = runner.position;
-
-                if (!runner.finished && runner.position >= trackLength) {
-                    runner.finished = true; runner.finishTime = gameTime;
-                    runner.isSprinting = false; runner.ultimateActive = false;
-                    removeSprintVisualEffects(runner);
-                    finishedRunners.push(runner);
-                }
-
-                const animSpeed = runner.ultimateActive ? 35 : (runner.isJumping ? 30 : 22);
-                runner.animPhase += effectiveDelta * animSpeed;
-                const armSwing = Math.sin(runner.animPhase) * 0.8;
-                const legSwing = Math.sin(runner.animPhase) * 0.3;
-                runner.leftArm.rotation.x = armSwing; runner.rightArm.rotation.x = -armSwing;
-                runner.leftLeg.rotation.x = -legSwing; runner.rightLeg.rotation.x = legSwing;
-                if (!runner.isJumping) runner.mesh.position.y = Math.abs(Math.sin(runner.animPhase * 2)) * 0.15;
-                if (runner.slowdownTimer > 0 && runner.hurdleFailTimer <= 0) {
-                    runner.tiltPhase += effectiveDelta * 60;
-                    const tilt = Math.sin(runner.tiltPhase * 0.2) * 0.5; runner.mesh.rotation.z = tilt;
-                } else if (!runner.isPushedBack) runner.mesh.rotation.z = 0;
-                if (runner.isSprinting && runner.sprintEffects) updateSprintEffects(runner, effectiveDelta);
-            });
-        }
-
-        function updateCamera(delta) {
-            if (startingSequence) return;
-            if (isPaused && !midBossActive) return;
-            if (midBossActive) {
-                renderer.render(scene, camera);
-                return;
-            }
-            const sortedRunners = [...runners].sort((a, b) => b.position - a.position);
-            const leader = sortedRunners[0];
-            const second = sortedRunners.length > 1 ? sortedRunners[1] : null;
-            const progress = leader.position / trackLength;
-            const sprintingRunners = runners.filter(r => r.isSprinting);
-            if (!gapMode && progress > 0.94 && finishedRunners.length < passCount) {
-                if (!slowMotion) { slowMotion = true; slowMotionFactor = 0.7; currentCameraMode = 'finish'; }
-            }
-            if (!gapMode && currentCameraMode !== 'finish') {
-                cameraChangeTimer += delta;
-                if (cameraChangeTimer > 4 && !slowMotion) {
-                    cameraChangeTimer = 0;
-                    const allModes = ['overview', 'side', 'front'];
-                    const availableModes = allModes.filter(mode => mode !== currentCameraMode);
-                    currentCameraMode = availableModes[Math.floor(Math.random() * availableModes.length)];
-                }
-            }
-            const targetPos = new THREE.Vector3();
-            const lookAtPos = new THREE.Vector3();
-            let primaryTarget = leader; let secondaryTarget = second;
-            if (sprintingRunners.length > 0 && !gapMode) {
-                primaryTarget = sprintingRunners[0];
-                if (sprintingRunners.length > 1) secondaryTarget = sprintingRunners[1];
-                else if (sprintingRunners[0] !== leader) secondaryTarget = leader;
-                else secondaryTarget = second;
-            }
-            const selectedArray = Array.from(selectedMembers);
-            const laneCount = selectedArray.length;
-            const laneWidth = 6;
-            const trackWidth = laneCount * laneWidth;
-
-            // 전체 러너 Z 범위
-            const allZ = runners.map(r => r.position);
-            const frontZ = Math.max(...allZ);
-            const backZ = Math.min(...allZ);
-            const spreadZ = frontZ - backZ;
-
-            // 격차 50 초과 시 합격/탈락 경계 중심, 이하면 전체 중간
-            const sortedAll = [...runners].sort((a, b) => b.position - a.position);
-            const cutoffA = sortedAll[passCount - 1];
-            const cutoffB = sortedAll[passCount];
-            const cutoffMidZ = cutoffA && cutoffB ? (cutoffA.position + cutoffB.position) / 2 : frontZ;
-            const focusZ = spreadZ <= 50 ? (frontZ + backZ) / 2 : cutoffMidZ;
-
-            camera.up.set(0, 1, 0);
-            if (gapMode && gapRunnerA && gapRunnerB) {
-                const midX = (gapRunnerA.laneX + gapRunnerB.laneX) / 2;
-                const midZ = (gapRunnerA.position + gapRunnerB.position) / 2;
-                const gapDistance = Math.abs(gapRunnerA.position - gapRunnerB.position);
-                const laneDistance = Math.abs(gapRunnerA.laneX - gapRunnerB.laneX);
-                const sideDistance = Math.max(30, 20 + laneDistance * 0.8 + gapDistance * 0.5);
-                targetPos.set(midX + sideDistance, 15, midZ); lookAtPos.set(midX, 2, midZ);
-            } else {
-                switch (currentCameraMode) {
-                    case 'overview':
-                        targetPos.set(25, 40, focusZ - 25);
-                        lookAtPos.set(5, 0, focusZ); break;
-                    case 'side': {
-                        const camY = 10;
-                        const sideDistance = Math.max(trackWidth * 0.7, 35);
-                        targetPos.set(sideDistance, camY, focusZ);
-                        lookAtPos.set(0, 2, focusZ);
-                    } break;
-                    case 'front': {
-                        const camY = 6;
-                        if (secondaryTarget && secondaryTarget !== primaryTarget) {
-                            const sideDir = primaryTarget.laneX > secondaryTarget.laneX ? 1 : -1;
-                            const sideOffset = 8 * sideDir;
-                            targetPos.set(primaryTarget.laneX + sideOffset, camY, primaryTarget.position + 25);
-                            lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
-                        } else {
-                            targetPos.set(10, camY, primaryTarget.position + 20);
-                            lookAtPos.set(primaryTarget.laneX, 2, primaryTarget.position);
-                        }
-                    } break;
-                    case 'finish': {
-                        const camHeight = Math.max(trackWidth * 1.2, 60);
-                        targetPos.set(0, camHeight, trackLength); lookAtPos.set(0, 0, trackLength);
-                        camera.up.set(-1, 0, 0);
-                    } break;
-                }
-            }
-            if (currentCameraMode !== prevCameraMode && !gapMode) {
-                camera.position.copy(targetPos);
-                if (!camera.lookAtVector) camera.lookAtVector = new THREE.Vector3();
-                camera.lookAtVector.copy(lookAtPos); camera.lookAt(lookAtPos);
-                prevCameraMode = currentCameraMode;
-            } else {
-                const lerpSpeed = gapMode ? 0.1 : (slowMotion ? 0.08 : 0.06);
-                camera.position.lerp(targetPos, lerpSpeed);
-                if (currentCameraMode !== 'finish') camera.position.y = targetPos.y;
-                if (camera.lookAtVector) {
-                    camera.lookAtVector.lerp(lookAtPos, lerpSpeed);
-                    if (currentCameraMode !== 'finish') camera.lookAtVector.y = lookAtPos.y;
-                    camera.lookAt(camera.lookAtVector);
-                } else { camera.lookAtVector = lookAtPos.clone(); camera.lookAt(lookAtPos); }
-            }
-        }
-
-        function updateRankingPanel() {
-            const sortedRunners = [...runners].sort((a, b) => {
-                if (a.finished && b.finished) return a.finishTime - b.finishTime;
-                if (a.finished) return -1; if (b.finished) return 1;
-                return b.position - a.position;
-            });
-            const rankingList = document.getElementById('rankingList');
-            rankingList.innerHTML = '';
-            sortedRunners.forEach((runner, index) => {
-                const rank = index + 1; const isPass = rank <= passCount;
-                const isConfirmed = runner.finished && rank <= passCount;
-                if (isConfirmed && !confirmedRanks.has(runner.member.id)) confirmedRanks.add(runner.member.id);
-                const div = document.createElement('div');
-                let sprintClass = runner.isSprinting ? 'sprint-effect' : '';
-                const displayName = runner.member.name.length === 2 ? runner.member.name + '　' : runner.member.name;
-                div.className = `ranking-item flex items-center gap-1 p-1 rounded-none text-sm ${isPass ? 'bg-green-900/40' : 'bg-gray-700/40'} ${confirmedRanks.has(runner.member.id) ? 'ranking-item-confirmed' : ''} ${sprintClass}`;
-                div.style.setProperty('color', runner.isSprinting ? runner.member.color : '');
-                
-                div.innerHTML = `
-                    <span class="w-6 text-center font-bold text-sm" style="color: ${runner.member.color}">${rank}</span>
-                    <img src="${runner.member.imgPng}" class="w-6 h-6 rounded-full object-cover">
-                    <span class="text-xs font-bold truncate" style="color: ${runner.member.color}">${displayName}</span>
-                    <span style="width: 0.5em;"></span>
-                `;
-                rankingList.appendChild(div);
-            });
-        }
-
-        function showUltimate(text, color = '#22c55e') {
-            const alert = document.getElementById('ultimateAlert');
-            const textDiv = alert.querySelector('div');
-            textDiv.textContent = text;
-            textDiv.style.color = color; textDiv.style.textShadow = 'none';
-            alert.classList.remove('hidden');
-        }
-
-        function createGapVisuals(runnerA, runnerB) {
-            const frontOffset = 0.7; const topY = 2.9;
-            const passZ = runnerA.position + frontOffset;
-            const failZ = runnerB.position + frontOffset;
-            const distance = Math.abs(passZ - failZ);
-            const lineMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.7 });
-            const lineMatBright = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.9 });
-            const horizontalLength = Math.abs(runnerA.laneX - runnerB.laneX);
-            const midX = (runnerA.laneX + runnerB.laneX) / 2;
-            if (horizontalLength > 0.1) {
-                const hLineGeom = new THREE.CylinderGeometry(0.08, 0.08, horizontalLength, 8);
-                const hLine = new THREE.Mesh(hLineGeom, lineMat);
-                hLine.rotation.z = Math.PI / 2; hLine.position.set(midX, topY, passZ); scene.add(hLine);
-            }
-            if (distance > 0.01) {
-                const vLineGeom = new THREE.CylinderGeometry(0.08, 0.08, distance, 8);
-                const vLine = new THREE.Mesh(vLineGeom, lineMatBright);
-                vLine.rotation.x = Math.PI / 2; vLine.position.set(runnerB.laneX, topY, (passZ + failZ) / 2); scene.add(vLine);
-            }
-            const endCapGeom = new THREE.BoxGeometry(3.0, 0.15, 0.15);
-            const capTop = new THREE.Mesh(endCapGeom, lineMatBright); capTop.position.set(runnerB.laneX, topY, passZ); scene.add(capTop);
-            const capBottom = new THREE.Mesh(endCapGeom, lineMatBright); capBottom.position.set(runnerB.laneX, topY, failZ); scene.add(capBottom);
-
-            const gapAlert = document.getElementById('gapAlert');
-            const gapDiv = gapAlert.querySelector('div');
-            const distanceText = distance.toFixed(2);
-            const closeThreshold = 3; const isClose = distance < closeThreshold;
-            const titleText = isClose ? '아깝다!' : '아깝지는 않다!';
-            const titleColor = isClose ? 'color: #fbbf24;' : 'color: #9ca3af;';
-            gapDiv.innerHTML = `<span style="font-size: 1.5rem; font-weight: bold; ${titleColor}">${titleText}</span><span style="width: 24px;"></span><span style="font-size: 2.5rem; font-weight: bold; color: #ffffff;">${distanceText}m 차이</span>`;
-            gapAlert.classList.remove('hidden');
-        }
-
-        function showFinalGap() {
-            const sortedRunners = [...runners].sort((a, b) => {
-                if (a.finished && b.finished) return a.finishTime - b.finishTime;
-                if (a.finished) return -1; if (b.finished) return 1;
-                return b.position - a.position;
-            });
-            const lastPassRunner = sortedRunners[passCount - 1];
-            const firstFailRunner = sortedRunners[passCount];
-            if (!firstFailRunner) { gameRunning = false; showResults(); return; }
-            gapMode = true; gapRunnerA = lastPassRunner; gapRunnerB = firstFailRunner;
-            createGapVisuals(lastPassRunner, firstFailRunner);
-            setTimeout(() => { gameRunning = false; document.getElementById('gapAlert').classList.add('hidden'); showResults(); }, 4000);
-        }
-
-        function checkGameEnd() {
-            if (!raceStarted || gameEndScheduled) return;
-            if (isPaused) return;
-            if (finishedRunners.length >= passCount) {
-                gameEndScheduled = true; raceEnded = true;
-                stopBGM();
-
-                sprintRunners.forEach(runner => {
-                    runner.isSprinting = false; runner.ultimateActive = false;
-                    runner.speed = runner.baseSpeed;
-                    removeSprintVisualEffects(runner);
-                });
-                ultimateActive = false;
-
-                document.getElementById('sprintScreenEffect').classList.add('hidden');
-                document.getElementById('sprintSpeedLines').classList.add('hidden');
-                document.getElementById('sprintWindEffect').classList.add('hidden');
-                document.getElementById('eventAlert').classList.add('hidden');
-                document.getElementById('ultimateAlert').classList.add('hidden');
-                showFinalGap();
-            }
-        }
-
-        function showResults() {
-            document.getElementById('gameScreen').classList.add('hidden');
-            document.getElementById('resultScreen').classList.remove('hidden');
-            document.getElementById('captureBtn').textContent = '결과 복사';
-            const resultList = document.getElementById('resultList');
-            const resultContainer = document.getElementById('resultContainer');
-            resultList.innerHTML = '';
-            const count = runners.length;
-            let gridCols = 'grid-cols-3 md:grid-cols-6'; let containerMaxW = 'max-w-7xl';
-            if (count >= 2 && count <= 5) {
-                gridCols = `grid-cols-2 md:grid-cols-${count}`;
-                if (count === 2) containerMaxW = 'max-w-2xl'; else if (count === 3) containerMaxW = 'max-w-4xl';
-                else if (count === 4) containerMaxW = 'max-w-5xl'; else if (count === 5) containerMaxW = 'max-w-6xl';
-            } else if (count >= 7 && count <= 8) { gridCols = 'grid-cols-2 md:grid-cols-4'; containerMaxW = 'max-w-5xl'; }
-            else if (count >= 9 && count <= 10) { gridCols = 'grid-cols-2 md:grid-cols-5'; containerMaxW = 'max-w-6xl'; }
-            resultList.className = `grid gap-4 ${gridCols}`;
-            resultContainer.className = `bg-gray-800 rounded-none w-full ${containerMaxW} transition-all duration-300`;
-            const sortedRunners = [...runners].sort((a, b) => {
-                if (a.finished && b.finished) return a.finishTime - b.finishTime;
-                if (a.finished) return -1; if (b.finished) return 1;
-                return b.position - a.position;
-            });
-            lastRacePassedIds = new Set();
-            lastRaceFailedIds = new Set();
-            lastPassCount = passCount;
-            sortedRunners.forEach((runner, index) => {
-                const rank = index + 1; const isPass = rank <= passCount;
-                if (isPass) lastRacePassedIds.add(runner.member.id);
-                else lastRaceFailedIds.add(runner.member.id);
-                const div = document.createElement('div');
-                div.className = `bg-gray-700 rounded-none p-2 border-2 ${isPass ? 'border-green-500' : 'border-transparent'}`;
-                div.innerHTML = `
-                    <div style="position:relative;width:100%;padding-top:100%;overflow:hidden;">
-                        <img src="${runner.member.imgPng}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center top;">
-                        <div style="position:absolute;bottom:0;left:0;width:100%;height:4px;background:${runner.member.color};"></div>
-                    </div>
-                    <div style="text-align:center;padding-top:6px;">
-                        <div style="margin:0 0 4px;">
-                            <span style="background:rgba(0,0,0,0.75);display:inline-block;min-width:28px;text-align:center;padding:2px 4px;font-weight:700;font-size:14px;color:${runner.member.color};">${rank}</span> <span style="font-weight:700;font-size:15px;color:${runner.member.color};">${runner.member.name}</span>
-                        </div>
-                        <div style="font-size:14px;font-weight:700;color:${isPass ? '#4ade80' : '#f87171'};">${isPass ? '합격' : '탈락'}</div>
-                    </div>
-                `;
-                resultList.appendChild(div);
-            });
-        }
-
-        function updateNameSubtitles() {
-            if (!raceStarted) return;
-            if (isPaused) return;
-            const sortedRunners = [...runners].sort((a, b) => {
-                if (a.finished && b.finished) return a.finishTime - b.finishTime;
-                if (a.finished) return -1; if (b.finished) return 1;
-                return b.position - a.position;
-            });
-            let ranksChanged = false;
-            sortedRunners.forEach((runner, index) => {
-                const rank = index + 1;
-                if (previousRanks[runner.member.id] !== rank) ranksChanged = true;
-            });
-            if (!ranksChanged) return;
-            sortedRunners.forEach((runner, index) => {
-                const rank = index + 1; previousRanks[runner.member.id] = rank; runner.currentRank = rank;
-                const nameCanvas = document.createElement('canvas');
-                const nameLength = runner.member.name.length;
-                let fontSize, planeWidth, planeHeight;
-                if (nameLength <= 2) { fontSize = 220; planeWidth = 20; planeHeight = 5.5; }
-                else if (nameLength === 3) { fontSize = 220; planeWidth = 20; planeHeight = 5.5; }
-                else { fontSize = 180; planeWidth = 22; planeHeight = 5; }
-                nameCanvas.width = fontSize * 8; nameCanvas.height = fontSize * 2;
-                const nctx = nameCanvas.getContext('2d');
-                nctx.clearRect(0, 0, nameCanvas.width, nameCanvas.height);
-                const rankX = nameCanvas.width * 0.35; const nameX = nameCanvas.width * 0.65;
-                nctx.strokeStyle = 'rgba(0,0,0,0.8)'; nctx.lineWidth = 16;
-                nctx.font = `900 ${fontSize * 1.2}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
-                nctx.textAlign = 'center'; nctx.textBaseline = 'middle';
-                nctx.strokeText(rank.toString(), rankX, nameCanvas.height / 2);
-                nctx.fillStyle = runner.member.color;
-                nctx.font = `900 ${fontSize * 1.2}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
-                nctx.fillText(rank.toString(), rankX, nameCanvas.height / 2);
-                nctx.strokeStyle = 'rgba(0,0,0,0.8)'; nctx.lineWidth = 12;
-                nctx.font = `900 ${fontSize}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
-                nctx.textAlign = 'center'; nctx.textBaseline = 'middle';
-                nctx.strokeText(runner.member.name, nameX, nameCanvas.height / 2);
-                nctx.fillStyle = runner.member.color;
-                nctx.font = `900 ${fontSize}px 'Segoe UI', 'Nanum Gothic', sans-serif`;
-                nctx.fillText(runner.member.name, nameX, nameCanvas.height / 2);
-                if (runner.nameMesh.material.map) runner.nameMesh.material.map.dispose();
-                const nameTexture = new THREE.CanvasTexture(nameCanvas);
-                runner.nameMesh.material.map = nameTexture; runner.nameMesh.material.needsUpdate = true;
-            });
-        }
-
-        let lastTime = 0;
-        function animate(currentTime = 0) {
-            if (!gameRunning) return;
-            const delta = Math.min((currentTime - lastTime) / 1000, 0.1);
-            lastTime = currentTime;
-            
-            checkMidBossEvent();
-            
-            updateRunners(delta); updateCamera(delta); updateRankingPanel(); updateNameSubtitles();
-            const gravelTime = gameTime * 2;
-            obstacles.forEach(obs => { if (obs.type === 'gravel') obs.mesh.rotation.z = Math.sin(gravelTime) * 0.05; });
-
-            // 그림자 카메라를 선두 러너 위치에 맞춰 업데이트
-            if (window._dirLight && runners.length > 0) {
-                const leaderZ = runners.reduce((max, r) => Math.max(max, r.position), 0);
-                window._dirLight.position.set(50, 100, leaderZ + 50);
-                window._dirLight.target.position.set(0, 0, leaderZ);
-                window._dirLight.target.updateMatrixWorld();
-                window._dirLight.shadow.camera.needsUpdate = true;
-            }
-
-            checkGameEnd(); renderer.render(scene, camera); requestAnimationFrame(animate);
-        }
-
-        createMemberGrid();
-        renderPassButtons();
-        updateSelectedCount();
-        updateStartButton();
-        preloadImages();
-    </script>
+    <div class="phase-nav">
+      <div class="pnav" id="goSetup">① 팀 편성</div>
+      <div class="pnav active">② 게임 진행</div>
+    </div>
+    <div class="game-top">
+      <h2>경기별 금액 관리</h2>
+      <button class="btn btn-ghost btn-sm" id="btnResetMoney">금액 초기화</button>
+      <button class="btn btn-danger btn-sm" id="btnFull">전체 초기화</button>
+      ${endBtn}
+    </div>
+    <div class="totals-bar">${totHtml}</div>
+    <div class="rounds-wrap">${roundsHtml}</div>
+    <div class="log-section">
+      <div class="slabel" style="margin-bottom:10px">거래 내역</div>
+      <div class="log-list">${logHtml}</div>
+    </div>
+    ${renderOvBox()}
+  </div>`;
+}
+
+function renderOvBox() {
+  const url = location.href.split('?')[0] + '?overlay';
+  return `<div class="ov-box">
+    <div class="slabel" style="margin-bottom:5px">🎬 OBS / 프릭샷 오버레이</div>
+    <div class="ov-hint">아래 URL을 OBS 브라우저 소스에 붙여넣으세요. 정사각형 권장 (600×600).<br>
+    Firebase 실시간 연동 — 스코어보드 수정이 즉시 반영됩니다.</div>
+    <code class="ov-url" id="ovUrl">${url}</code>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" id="btnCopy">📋 URL 복사</button>
+      <button class="btn btn-ghost btn-sm" id="btnPreview">🔗 미리보기</button>
+    </div>
+  </div>`;
+}
+
+// ── BIND ─────────────────────────────────────────────────────────
+function bind() {
+  const $ = id => document.getElementById(id);
+  const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
+
+  document.querySelectorAll('[data-member]').forEach(el => {
+    el.addEventListener('click', () => { sel = (sel === el.dataset.member) ? null : el.dataset.member; render(); });
+  });
+
+  document.querySelectorAll('[id^="sc"]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.dataset.rm) return;
+      if (!sel) return;
+      const ti = parseInt(el.dataset.ti), t = state.teams[ti];
+      if (t.members.length >= 3) return;
+      t.members.push({ name: sel, money: 0 });
+      state.unassigned = state.unassigned.filter(x => x !== sel);
+      sel = null; save(); render();
+    });
+  });
+
+  document.querySelectorAll('[data-rm]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const ti = parseInt(el.dataset.rft), nm = el.dataset.rm;
+      state.teams[ti].members = state.teams[ti].members.filter(m => m.name !== nm);
+      state.unassigned.push(nm);
+      save(); render();
+    });
+  });
+
+  document.querySelectorAll('.color-pick').forEach(el => {
+    el.addEventListener('click', e => e.stopPropagation());
+    el.addEventListener('input', e => {
+      e.stopPropagation();
+      const ti = parseInt(el.dataset.ci);
+      state.teams[ti].color = el.value;
+      // 슬롯 색만 즉시 업데이트 (picker 닫히지 않도록)
+      const card = $('sc' + ti);
+      if (card) card.querySelectorAll('.slot-f').forEach(sf => sf.style.background = el.value);
+    });
+    el.addEventListener('change', e => {
+      e.stopPropagation();
+      state.teams[parseInt(el.dataset.ci)].color = el.value;
+      save(); render();
+    });
+  });
+
+  document.querySelectorAll('.tni').forEach(el => {
+    el.addEventListener('input', () => { state.teams[parseInt(el.dataset.tn)].name = el.value; save(); });
+    el.addEventListener('click', e => e.stopPropagation());
+  });
+
+  on('btnReset', () => { if (confirm('팀 편성을 초기화할까요?')) { state = defState(); sel = null; modes = {}; save(); render(); } });
+  on('btnStart', () => { state.phase = 'game'; state.log = []; save(); render(); });
+  on('goSetup',  () => { state.phase = 'setup'; save(); render(); });
+  on('btnResetMoney', () => {
+    if (confirm('모든 멤버의 금액을 $0으로 초기화할까요?')) {
+      state.teams.forEach(t => t.members.forEach(m => m.money = 0));
+      state.log = []; save(); render();
+    }
+  });
+  on('btnFull', () => { if (confirm('전체 초기화하시겠습니까?')) { state = defState(); sel = null; modes = {}; save(); render(); } });
+  on('btnEnd',  () => { if (confirm('게임을 종료할까요? 오버레이가 최종 팀 순위로 전환됩니다.')) { state.ended = true; save(); render(); } });
+  on('btnResume', () => { state.ended = false; save(); render(); });
+
+  document.querySelectorAll('[data-mode]').forEach(el => {
+    el.addEventListener('click', () => {
+      const ti = parseInt(el.dataset.ti), mi = parseInt(el.dataset.mi);
+      modes[ti+'_'+mi] = el.dataset.mode;
+      const inp = $('inp'+ti+'_'+mi); if (inp) inp.value = '';
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-act]').forEach(el => {
+    el.addEventListener('click', () => {
+      const ti = parseInt(el.dataset.ti), mi = parseInt(el.dataset.mi);
+      const inp = $('inp'+ti+'_'+mi);
+      const raw = parseFloat(inp?.value);
+      if (!inp || isNaN(raw)) return;
+      const m = state.teams[ti].members[mi];
+      const act = el.dataset.act;
+      let amount, mode;
+      if (act === 'set') {
+        const v = Math.round(raw); amount = v - m.money; m.money = v; mode = 'set';
+      } else {
+        const delta = Math.round(raw) * (act === 'plus' ? 1 : -1);
+        m.money += delta; amount = delta; mode = 'delta';
+      }
+      addLog(ti, m.name, amount, m.money, mode);
+      inp.value = ''; save(); render();
+    });
+  });
+
+  document.querySelectorAll('.ni').forEach(inp => {
+    inp.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const [ti, mi] = inp.id.replace('inp','').split('_').map(Number);
+      const act = getMode(ti, mi) === 'set' ? 'set' : 'plus';
+      document.querySelector(`[data-act="${act}"][data-ti="${ti}"][data-mi="${mi}"]`)?.click();
+    });
+  });
+
+  on('btnCopy', () => {
+    const url = $('ovUrl')?.textContent;
+    navigator.clipboard?.writeText(url).then(() => {
+      const b = $('btnCopy'); if (b) { b.textContent = '✅ 복사됨'; setTimeout(() => b.textContent = '📋 URL 복사', 1500); }
+    });
+  });
+  on('btnPreview', () => { window.open($('ovUrl')?.textContent, '_blank', 'width=620,height=620'); });
+}
+
+// ── OVERLAY ──────────────────────────────────────────────────────
+function renderOverlay() {
+  document.body.classList.add('ovm');
+  const app = document.getElementById('app');
+  const rkBg  = {1:'#FFD700',2:'#B8B8B8',3:'#CD7F32',4:'#3a3a3a'};
+  const rkTxt = {1:'#000',  2:'#000',  3:'#fff',  4:'#fff'};
+
+  if (state.ended) {
+    if (ovTimer) { clearInterval(ovTimer); ovTimer = null; }
+    const sorted = state.teams.map(t => ({ ...t, tot: teamTotal(t) }))
+      .sort((a, b) => b.tot - a.tot);
+
+    app.innerHTML = `<div class="ov-stage"><div class="ov-final visible">
+      <div class="ov-fh"><div class="ov-fh-title">최종 팀 순위</div></div>
+      ${sorted.map((t, ri) => `
+        <div class="ov-trow" style="border-left-color:${t.color}">
+          <div class="ov-trow-rank ovr${ri+1}" style="background:${rkBg[ri+1]};color:${rkTxt[ri+1]}">${ri+1}</div>
+          <div class="ov-trow-info">
+            <div class="ov-trow-members" style="color:${t.color}">${t.members.map(m=>m.name).join(' · ')}</div>
+          </div>
+          <div class="ov-trow-money" style="color:${t.color}">${fmtD(t.tot)}</div>
+        </div>`).join('')}
+    </div></div>`;
+    return;
+  }
+
+  const roundNames = ['경기 1','경기 2','경기 3'];
+  const panelsHtml = [0,1,2].map(round => {
+    const ranked = rankPlayers(roundPlayers(round));
+    const pipsHtml = [0,1,2].map(i => `<div class="ov-pip${i===round?' on':''}"></div>`).join('');
+    const rowsHtml = ranked.map((p, ri) => {
+      const others = state.teams[p.ti].members.filter((_, idx) => idx !== p.mi).map(m => m.name).join(' · ');
+      return `<div class="ov-prow" style="border-left-color:${p.teamColor}">
+        <div class="ov-rnum ovr${ri+1}" style="background:${rkBg[ri+1]};color:${rkTxt[ri+1]}">${ri+1}</div>
+        <div class="ov-info">
+          <div class="ov-pname">${p.name}</div>
+          <div class="ov-psub" style="color:${p.teamColor}">${others}</div>
+        </div>
+        <div class="ov-pmoney" style="color:${p.teamColor}">${fmtD(p.money)}</div>
+      </div>`;
+    }).join('');
+    return `<div class="ov-panel" id="ovp${round}">
+      <div class="ov-ph"><div class="ov-ph-title">${roundNames[round]}</div>
+      <div class="ov-pips">${pipsHtml}</div></div>
+      ${rowsHtml}
+    </div>`;
+  }).join('');
+
+  app.innerHTML = `<div class="ov-stage">${panelsHtml}
+    <div id="ovProgress" class="ov-progress" style="width:0%"></div>
+  </div>`;
+
+  ovProgressEl = document.getElementById('ovProgress');
+  showOvPanel(ovCurrent);
+  if (ovTimer) clearInterval(ovTimer);
+  ovTimer = setInterval(() => { ovCurrent = (ovCurrent + 1) % 3; showOvPanel(ovCurrent); }, 5000);
+}
+
+function showOvPanel(idx) {
+  document.querySelectorAll('.ov-panel').forEach((p, i) => p.classList.toggle('visible', i === idx));
+  if (ovProgressEl) {
+    ovProgressEl.style.transition = 'none';
+    ovProgressEl.style.width = '0%';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      ovProgressEl.style.transition = 'width 5s linear';
+      ovProgressEl.style.width = '100%';
+    }));
+  }
+}
+
+// ── FIREBASE LISTENER ────────────────────────────────────────────
+STATE_REF.on('value', snapshot => {
+  const incoming = sanitize(snapshot.val());
+
+  if (!isOv && incoming.updatedAt === myLastSave && state !== null) return;
+
+  state = incoming;
+
+  if (isOv) {
+    renderOverlay();
+  } else {
+    render();
+  }
+}, error => {
+  console.error('Firebase error:', error);
+  document.getElementById('app').innerHTML =
+    '<div class="loading"><div style="color:#FF4757">Firebase 연결 실패</div><div style="font-size:.8rem;color:var(--muted)">' + error.message + '</div></div>';
+});
+</script>
 </body>
 </html>
