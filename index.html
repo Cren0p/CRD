@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>천타버스 랜덤 달리기</title>
-    <link rel="icon" href="https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CRD.png">
+    <link rel="icon" href="https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CRD.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
@@ -212,7 +212,7 @@
     <div id="menuScreen" class="min-h-screen p-4">
         <div class="max-w-6xl mx-auto">
             <div class="flex justify-center mb-6">
-                <img src="https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CRD.webp" alt="천타버스 랜덤 달리기" class="h-36 object-contain">
+                <img src="https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CRD.webp" alt="천타버스 랜덤 달리기" class="h-36 object-contain">
             </div>
             
             <div class="flex justify-center mb-6">
@@ -288,7 +288,7 @@
 
         <div class="ranking-container" id="rankingContainer" style="opacity: 0; transition: opacity 0.5s;">
             <div id="rankingPanel" class="bg-black/75 p-3 w-max pointer-events-auto backdrop-blur-sm">
-                <div class="mb-2 text-center"><img src="https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CRD_A.webp" style="height:32px;object-fit:contain;margin:0 auto;"></div>
+                <div class="mb-2 text-center"><img src="https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CRD_A.webp" style="height:32px;object-fit:contain;margin:0 auto;"></div>
                 <div id="rankingList" class="space-y-1"></div>
             </div>
         </div>
@@ -321,37 +321,37 @@
 
     <script>
         const members = [
-            { id: 1, name: '천양', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/01.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/01.webp', color: '#43EAF6', isBoss: true },
-            { id: 2, name: '마다옴', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/02.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/02.webp', color: '#FFF5C3' },
-            { id: 3, name: '나나문', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/03.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/03.webp', color: '#F4F6FF' },
-            { id: 4, name: '임하밍', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/04.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/04.webp', color: '#F8DBFF' },
-            { id: 5, name: '문모모', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/05.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/05.webp', color: '#A868FB' },
-            { id: 6, name: '한아밍', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/06.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/06.webp', color: '#FEC0C2' },
-            { id: 7, name: '카푸', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/07.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/07.webp', color: '#FFCFB7' },
-            { id: 8, name: '캬앙', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/08.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/08.webp', color: '#FF5A4D' },
-            { id: 9, name: '김웰로', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/09.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/09.webp', color: '#BFEF90' },
-            { id: 10, name: '모카', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/10.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/10.webp', color: '#5E8EFF' },
-            { id: 11, name: '달타', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/11.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/11.webp', color: '#FFC462' },
-            { id: 12, name: '파니', img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/12.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/12.webp', color: '#9FC5E8' }
+            { id: 1, name: '천양', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/01.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/01.webp', color: '#43EAF6', isBoss: true },
+            { id: 2, name: '마다옴', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/02.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/02.webp', color: '#FFF5C3' },
+            { id: 3, name: '나나문', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/03.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/03.webp', color: '#F4F6FF' },
+            { id: 4, name: '임하밍', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/04.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/04.webp', color: '#F8DBFF' },
+            { id: 5, name: '문모모', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/05.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/05.webp', color: '#A868FB' },
+            { id: 6, name: '한아밍', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/06.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/06.webp', color: '#FEC0C2' },
+            { id: 7, name: '카푸', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/07.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/07.webp', color: '#FFCFB7' },
+            { id: 8, name: '캬앙', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/08.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/08.webp', color: '#FF5A4D' },
+            { id: 9, name: '김웰로', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/09.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/09.webp', color: '#BFEF90' },
+            { id: 10, name: '모카', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/10.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/10.webp', color: '#5E8EFF' },
+            { id: 11, name: '달타', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/11.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/11.webp', color: '#FFC462' },
+            { id: 12, name: '파니', img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/12.jpg', imgPng: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/12.webp', color: '#9FC5E8' }
         ];
 
         const midBosses = [
             { 
                 id: 'authority', 
                 name: '수장의 권한', 
-                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/CY.webp',
+                img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/CY.webp',
                 color: '#43EAF6'
             },
             { 
                 id: 'buo', 
                 name: '부어', 
-                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/TANG.webp',
+                img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/TANG.webp',
                 color: '#FFA500'
             },
             { 
                 id: 'thunder', 
                 name: '천기의자', 
-                img: 'https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/TH.webp',
+                img: 'https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/TH.webp',
                 color: '#FFFF00'
             }
         ];
@@ -747,7 +747,7 @@
                 bgm.src = '';
                 bgm = null;
             }
-            bgm = new Audio('https://raw.githubusercontent.com/Cren0p/Crenop/refs/heads/main/chuntaverse.mp3');
+            bgm = new Audio('https://raw.githubusercontent.com/Cren0p/CRD/refs/heads/main/chuntaverse.mp3');
             bgm.volume = isMuted ? 0 : currentVolume;
             bgm.load();
             const playPromise = bgm.play();
