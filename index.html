@@ -111,7 +111,6 @@
         .pass-count-btn:disabled { background: #1F2937; border-color: #374151; color: #4b5563; cursor: default; }
         .pass-count-btn:not(:disabled):hover { background: #4b5563; color: white; }
         .pass-count-btn.selected { background: #4b5563; border-color: #9ca3af; color: white; }
-        .streak-badge { font-size: 14px; color: #4ade80; text-align: center; margin-top: 2px; }
         #volumeControl {
             position: absolute; top: 16px; right: 16px; z-index: 100; display: flex; align-items: center; gap: 8px;
             background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); padding: 8px 14px; pointer-events: auto;
@@ -358,10 +357,7 @@
 
         let selectedMembers = new Set();
         let passCount = null;
-        const CONSECUTIVE_PASS7_MEMBERS = new Set([12]);      // 파니 7연속
-        const CONSECUTIVE_PASS3_MEMBERS = new Set([3]);      // 나나문 3연속
-        const CONSECUTIVE_PASS2_MEMBERS = new Set([5, 9]);   // 문모모, 김웰로 2연속
-        const CONSECUTIVE_FAIL2_MEMBERS = new Set([11]);     // 달타 2연속 탈락
+
         let lastRacePassedIds = new Set();
         let lastRaceFailedIds = new Set();
         let lastPassCount = null;
@@ -510,17 +506,7 @@
                 const card = document.createElement('div');
                 card.className = 'member-card bg-gray-700 p-3 cursor-pointer border-2 border-transparent';
                 card.dataset.id = member.id;
-                const streakBadge = CONSECUTIVE_PASS7_MEMBERS.has(member.id)
-                    ? `<div class="streak-badge" style="color:#4ade80;">7연속 합격 중</div>`
-                    : CONSECUTIVE_PASS3_MEMBERS.has(member.id)
-                    ? `<div class="streak-badge" style="color:#4ade80;">3연속 합격 중</div>`
-                    : CONSECUTIVE_PASS2_MEMBERS.has(member.id)
-                    ? `<div class="streak-badge" style="color:#4ade80;">2연속 합격 중</div>`
-                    : CONSECUTIVE_FAIL2_MEMBERS.has(member.id)
-                    ? `<div class="streak-badge" style="color:#f87171;">2연속 탈락 중</div>`
-                    : `<div class="streak-badge" style="visibility:hidden;">dummy</div>`;
                 card.innerHTML = `
-                    ${streakBadge}
                     <div class="aspect-square overflow-hidden mb-2 relative">
                         <img src="${member.imgPng}" alt="${member.name}" class="w-full h-full object-cover">
                         <div class="absolute bottom-0 left-0 w-full h-1" style="background-color: ${member.color}"></div>
